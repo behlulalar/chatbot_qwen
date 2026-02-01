@@ -56,14 +56,17 @@ def main():
         scheduler = UpdateScheduler()
         scheduler.start()
         print("✅ Scheduler started")
+        print(f"   Next update: {scheduler.scheduler.get_jobs()[0].next_run_time if scheduler.scheduler.get_jobs() else 'N/A'}")
         
-        # Optionally run update job immediately on startup
-        # Uncomment if you want to check for updates on startup
-        # print("🔄 Running initial update check...")
+        # Optional: Run update job immediately on startup
+        # Useful for checking updates when server starts
+        # Uncomment to enable:
+        # print("\n🔄 Running initial update check...")
         # scheduler.run_now()
+        # print("✅ Initial update complete")
         
     except Exception as e:
-        logger.error(f"Error starting scheduler: {e}")
+        logger.error(f"Error starting scheduler: {e}", exc_info=True)
         print(f"⚠️ Scheduler not started: {e}")
     
     # Start FastAPI server
