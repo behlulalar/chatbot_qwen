@@ -51,16 +51,24 @@ async def list_documents(
         # Get total count
         total = query.count()
         
-        # Fallback: when DB is empty (e.g. manual PDF/JSON upload), show vector store count
+        # Fallback: when DB is empty (e.g. manual PDF/JSON upload), show vector store or JSON count
         if total == 0:
             try:
                 from app.rag import VectorStoreManager
+                from app.config import settings
                 manager = VectorStoreManager()
                 manager.create_or_load()
                 stats = manager.get_collection_stats()
                 total = stats.get("document_count", 0) or 0
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Vector store fallback failed: {e}")
+                try:
+                    from pathlib import Path
+                    json_dir = Path(settings.json_directory)
+                    if json_dir.exists():
+                        total = len(list(json_dir.glob("*.json")))
+                except Exception:
+                    pass
         
         # Get paginated results
         documents = query.offset(skip).limit(limit).all()

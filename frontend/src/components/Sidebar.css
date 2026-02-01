@@ -67,7 +67,14 @@
   color: #FFFFFF;
 }
 
+/* Masaüstünde de kapat butonu göster (küçük ekranlarda); mobilde her zaman */
 @media (max-width: 768px) {
+  .sidebar-close-button {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
   .sidebar-close-button {
     display: flex;
   }
