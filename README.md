@@ -175,17 +175,51 @@ subu_chatbot_v2/
 - [x] Database design (PostgreSQL)
 - [x] Background job scheduling
 
+## 🐧 Deployment
+
+### Docker ile (Önerilen)
+```bash
+# Projeyi klonla
+git clone https://github.com/YOUR_USERNAME/subu_chatbot_v2.git
+cd subu_chatbot_v2
+
+# .env dosyalarını ayarla
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+# Docker Compose ile başlat
+docker-compose up -d
+```
+
+### Ubuntu 22.04'e Manuel Deployment
+Detaylı talimatlar için: [DEPLOYMENT_UBUNTU.md](DEPLOYMENT_UBUNTU.md)
+
+## 🧪 Testing
+
+```bash
+cd backend
+pytest -v
+```
+
 ## 🤝 Katkıda Bulunma
 
-Bu proje açık kaynak değildir, ancak öğrenme amaçlı kullanılabilir.
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📝 Lisans
 
-Bu proje eğitim amaçlıdır - Sakarya Uygulamalı Bilimler Üniversitesi
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
 
 ## 👨‍💻 Geliştirici
 
 **Muhammed Behlül Alar**
 - Proje: SUBU Mevzuat Chatbot
-- Teknolojiler: Python, LangChain, OpenAI, FastAPI, PostgreSQL, ChromaDB
+- Teknolojiler: Python, LangChain, OpenAI, FastAPI, PostgreSQL, ChromaDB, React, TypeScript
 - Tarih: 2026
+
+---
+
+⭐ Bu projeyi beğendiyseniz yıldız vermeyi unutmayın!
