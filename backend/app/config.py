@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     update_interval: int = Field(default=24, alias="UPDATE_INTERVAL")
     
     # LLM
-    model_name: str = Field(default="gpt-3.5-turbo", alias="MODEL_NAME")
+    model_name: str = Field(default="gpt-4o-mini", alias="MODEL_NAME")
     temperature: float = Field(default=0.1, alias="TEMPERATURE")
     max_tokens: int = Field(default=1000, alias="MAX_TOKENS")
     
@@ -48,6 +48,16 @@ class Settings(BaseSettings):
     redis_db: int = Field(default=0, alias="REDIS_DB")
     query_cache_ttl: int = Field(default=3600, alias="QUERY_CACHE_TTL")
     response_cache_ttl: int = Field(default=1800, alias="RESPONSE_CACHE_TTL")
+    
+    # CORS Settings
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:80",
+        alias="CORS_ORIGINS"
+    )
+    
+    def get_cors_origins(self) -> list:
+        """Parse CORS origins from comma-separated string."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
     
     class Config:
         env_file = ".env"
