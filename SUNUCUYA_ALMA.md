@@ -77,13 +77,54 @@ ls -la /opt/local_chatbot_subu/frontend/build/static/js/*.js | head -1
 
 ## Hâlâ Olmadıysa
 
-### Doküman sayısı hâlâ 0
+### Doküman sayısı 0 ve chatbot cevap vermiyor
+
+Sunucuda scraping çalışmadığı için `data/` boş olabilir. Örnek veri ile vector store oluşturun:
+
+**1) Örnek JSON'u sunucuya kopyalayın (Mac'te):**
+```bash
+ssh root@45.141.150.48 "mkdir -p /opt/local_chatbot_subu/backend/data/processed_json"
+scp /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2/backend/data/processed_json/sample_mevzuat.json \
+  root@45.141.150.48:/opt/local_chatbot_subu/backend/data/processed_json/
+```
+
+**2) Sunucuda vector store'u oluşturun:**
+```bash
+cd /opt/local_chatbot_subu/backend
+source venv/bin/activate
+python build_vectorstore_only.py
+```
+
+**3) Backend'i yeniden başlatın:**
+```bash
+sudo systemctl restart subu-backend
+```
+
+Bundan sonra döküman sayısı 0'dan çıkar ve chatbot örnek metne göre cevap verebilir. Gerçek mevzuat için scraping’i internete erişebilen bir makinede çalıştırıp `data/` klasörünü sunucuya kopyalayabilirsiniz.
+
+### Manuel eklediğiniz PDF/JSON'ları sisteme yüklemek
+
+Sunucuda `data/raw_pdfs` veya `data/processed_json` içine manuel kopyaladığınız dosyalar varsa, bunların LLM tarafından kullanılması için **vector store** oluşturulmalı. Aşağıdaki script hem PDF'leri JSON'a çevirir hem tüm JSON'lardan vector store'u yeniden oluşturur hem de (isteğe bağlı) veritabanına kaydeder:
+
+**Sunucuda (tek komut):**
+```bash
+cd /opt/local_chatbot_subu/backend
+source venv/bin/activate
+python load_manual_documents.py
+sudo systemctl restart subu-backend
+```
+
+- **PDF'ler** `backend/data/raw_pdfs/` içinde olmalı; script henüz JSON'u olmayan her PDF'i JSON'a çevirip `data/processed_json/` içine yazar.
+- **JSON'lar** doğrudan `backend/data/processed_json/` içine kopyalanabilir; script bu klasördeki tüm `.json` dosyalarını okuyup vector store'u sıfırdan oluşturur.
+- Sadece vector store istiyorsanız (DB'ye kayıt istemiyorsanız): `python load_manual_documents.py --no-db`
+
+### Doküman sayısı hâlâ 0 (genel kontrol)
 ```bash
 # Sunucuda log kontrol
 sudo journalctl -u subu-backend -n 30 | grep -i document
 
 # JSON dosya sayısı (fallback için)
-ls /opt/local_chatbot_subu/backend/data/processed_json/*.json | wc -l
+ls /opt/local_chatbot_subu/backend/data/processed_json/*.json 2>/dev/null | wc -l
 ```
 
 ### Sidebar kapanmıyor

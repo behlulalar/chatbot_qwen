@@ -1,6 +1,7 @@
 """
 Documents API endpoints
 """
+from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -13,6 +14,49 @@ from app.utils.logger import setup_logger
 logger = setup_logger("api_documents", "./logs/api_documents.log")
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+def _resolve_json_directory():
+    """Resolve JSON directory path: try cwd (gunicorn), then backend root."""
+    from app.config import settings
+    base = Path(settings.json_directory)
+    if base.is_absolute():
+        return base
+    # Try current working directory first (e.g. gunicorn started from backend/)
+    cwd_base = (Path.cwd() / settings.json_directory).resolve()
+    if cwd_base.exists():
+        return cwd_base
+    # Fallback: backend root (app/api/documents.py -> app -> backend)
+    backend_root = Path(__file__).resolve().parent.parent.parent
+    return (backend_root / settings.json_directory).resolve()
+
+
+def _get_document_count_fallback():
+    """
+    Get document count when DB is empty: try vector store, then JSON directory.
+    Uses absolute paths so it works regardless of process cwd.
+    """
+    # 1) Vector store count (chunk count; if > 0 we use it as "documents" indicator)
+    try:
+        from app.rag import VectorStoreManager
+        manager = VectorStoreManager()
+        manager.create_or_load()
+        stats = manager.get_collection_stats()
+        count = stats.get("document_count")
+        if count is not None and count > 0:
+            return count
+    except Exception as e:
+        logger.warning(f"Vector store count fallback failed: {e}")
+    # 2) JSON file count
+    try:
+        base = _resolve_json_directory()
+        if base.exists():
+            n = len(list(base.glob("*.json")))
+            if n > 0:
+                return n
+    except Exception as e:
+        logger.warning(f"JSON dir count fallback failed: {e}")
+    return 0
 
 
 @router.get("/", response_model=DocumentListResponse)
@@ -51,24 +95,9 @@ async def list_documents(
         # Get total count
         total = query.count()
         
-        # Fallback: when DB is empty (e.g. manual PDF/JSON upload), show vector store or JSON count
+        # Fallback: when DB is empty (e.g. manual PDF/JSON upload), use vector store or JSON count
         if total == 0:
-            try:
-                from app.rag import VectorStoreManager
-                from app.config import settings
-                manager = VectorStoreManager()
-                manager.create_or_load()
-                stats = manager.get_collection_stats()
-                total = stats.get("document_count", 0) or 0
-            except Exception as e:
-                logger.warning(f"Vector store fallback failed: {e}")
-                try:
-                    from pathlib import Path
-                    json_dir = Path(settings.json_directory)
-                    if json_dir.exists():
-                        total = len(list(json_dir.glob("*.json")))
-                except Exception:
-                    pass
+            total = _get_document_count_fallback()
         
         # Get paginated results
         documents = query.offset(skip).limit(limit).all()

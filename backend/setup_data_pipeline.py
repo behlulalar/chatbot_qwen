@@ -31,7 +31,7 @@ from app.scraper.qdms_scraper import QDMSScraper
 from app.scraper.link_tracker import LinkTracker
 from app.converter.pdf_processor import PDFProcessor
 from app.rag.document_loader import DocumentLoader
-from app.rag.chunker import DocumentChunker
+from app.rag.chunker import MevzuatChunker
 from app.rag.vector_store import VectorStoreManager
 from app.utils.logger import setup_logger
 
@@ -199,7 +199,7 @@ class DataPipelineSetup:
             
             # Chunk documents
             print("  → Chunking documents...")
-            chunker = DocumentChunker(
+            chunker = MevzuatChunker(
                 chunk_size=settings.chunk_size,
                 chunk_overlap=settings.chunk_overlap
             )
