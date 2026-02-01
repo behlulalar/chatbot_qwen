@@ -166,6 +166,17 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="chat-container">
+      {/* Mobilde sidebar açıkken overlay - dışarı tıklanınca kapat */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Sidebar kapat"
+        />
+      )}
       <Sidebar 
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}

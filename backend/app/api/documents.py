@@ -51,6 +51,17 @@ async def list_documents(
         # Get total count
         total = query.count()
         
+        # Fallback: when DB is empty (e.g. manual PDF/JSON upload), show vector store count
+        if total == 0:
+            try:
+                from app.rag import VectorStoreManager
+                manager = VectorStoreManager()
+                manager.create_or_load()
+                stats = manager.get_collection_stats()
+                total = stats.get("document_count", 0) or 0
+            except Exception:
+                pass
+        
         # Get paginated results
         documents = query.offset(skip).limit(limit).all()
         

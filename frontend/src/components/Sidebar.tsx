@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MessagesSquare, PlusCircle, FileText, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { MessagesSquare, PlusCircle, FileText, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react';
 import './Sidebar.css';
 import { getSessions, deleteSession, ChatSession } from '../utils/sessionStorage';
 
@@ -25,6 +25,7 @@ interface DocumentInfo {
 
 const Sidebar: React.FC<SidebarProps> = ({ 
   isOpen, 
+  onToggle,
   onClearChat,
   onStartNewChat,
   onLoadSession,
@@ -73,13 +74,23 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="sidebar">
       <div className="sidebar-header">
         <h2><MessagesSquare size={20} /> Sohbetler</h2>
-        <button 
-          className="new-chat-button"
-          onClick={onStartNewChat}
-          title="Yeni Sohbet"
-        >
-          <PlusCircle size={18} /> Yeni
-        </button>
+        <div className="sidebar-header-actions">
+          <button 
+            className="new-chat-button"
+            onClick={onStartNewChat}
+            title="Yeni Sohbet"
+          >
+            <PlusCircle size={18} /> Yeni
+          </button>
+          <button 
+            className="sidebar-close-button"
+            onClick={onToggle}
+            title="Kapat"
+            aria-label="Sidebar kapat"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Chat History */}
@@ -136,17 +147,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         
         {showDocuments && (
           <div className="documents-list">
-            {documents.slice(0, 5).map((doc) => (
-              <div key={doc.id} className="document-item">
-                <div className="document-title" title={doc.title}>
-                  <FileText size={16} /> {doc.title.substring(0, 40)}...
+            {documents.length === 0 && totalDocuments > 0 ? (
+              <p className="empty-message">Mevzuat veritabanı yüklü (kaynak parçaları)</p>
+            ) : (
+              documents.slice(0, 5).map((doc) => (
+                <div key={doc.id} className="document-item">
+                  <div className="document-title" title={doc.title}>
+                    <FileText size={16} /> {doc.title.substring(0, 40)}...
+                  </div>
+                  <div className="document-meta">
+                    {doc.page_count && <span>{doc.page_count} sayfa</span>}
+                    {doc.article_count && <span> • {doc.article_count} madde</span>}
+                  </div>
                 </div>
-                <div className="document-meta">
-                  {doc.page_count && <span>{doc.page_count} sayfa</span>}
-                  {doc.article_count && <span> • {doc.article_count} madde</span>}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
