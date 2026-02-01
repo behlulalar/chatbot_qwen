@@ -1,0 +1,74 @@
+{
+  "test_questions": [
+    {
+      "id": 1,
+      "category": "Genel Eğitim",
+      "question": "Lisans programları kaç yıldır?",
+      "expected_answer": "4 yıl",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 2,
+      "category": "Genel Eğitim",
+      "question": "Ön lisans programları kaç yıldır?",
+      "expected_answer": "2 yıl",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 3,
+      "category": "Sınav",
+      "question": "Bir günde en fazla kaç sınava girebilirim?",
+      "expected_answer": "2 sınav",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 4,
+      "category": "Sınav",
+      "question": "Bütünleme sınavı nedir?",
+      "expected_answer": "Final sınavına giremeyen veya başarısız olan öğrenciler için açılan sınav",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 5,
+      "category": "Ders Alma",
+      "question": "Üst sınıftan ders almak için kaç ortalama gerekir?",
+      "expected_answer": "2.50",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 6,
+      "category": "Ders Alma",
+      "question": "Seçmeli ders açılması için kaç öğrenci gerekir?",
+      "expected_answer": "En az 20 öğrenci",
+      "expected_source": "LİSANS VE ÖN LİSANS EĞİTİM-ÖĞRETİM VE SINAV YÖNERGESİ"
+    },
+    {
+      "id": 7,
+      "category": "Meta",
+      "question": "Sen kimsin?",
+      "expected_answer": "SUBU Mevzuat Asistanı",
+      "expected_source": "META_RESPONSE"
+    },
+    {
+      "id": 8,
+      "category": "Yanlış Kategori (Lisans vs Lisansüstü)",
+      "question": "Lisans öğrencileri için tez savunması nasıl yapılır?",
+      "expected_answer": "Lisans öğrencileri için tez savunması yoktur (bu lisansüstü için geçerlidir)",
+      "expected_source": "NONE_OR_CLARIFICATION"
+    },
+    {
+      "id": 9,
+      "category": "Yanlış Kategori (Yurt İçi vs Yurt Dışı)",
+      "question": "Türk öğrenciler için lisansa başvuru şartları neler?",
+      "expected_answer": "ÖSYM yerleştirme sistemi",
+      "expected_source": "NOT_YURT_DISI_KABULU"
+    },
+    {
+      "id": 10,
+      "category": "Eksik Bilgi",
+      "question": "Lisanstan mezun olmak için gereken not ortalaması kaç?",
+      "expected_answer": "Mevzuatlarda açıkça belirtilmemiş, detaylar için Öğrenci İşleri'ne başvurun",
+      "expected_source": "MULTIPLE_WITH_WARNING"
+    }
+  ]
+}

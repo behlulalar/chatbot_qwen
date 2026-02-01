@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: subu_postgres
+    environment:
+      POSTGRES_DB: subu_chatbot
+      POSTGRES_USER: subu_user
+      POSTGRES_PASSWORD: subu_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U subu_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - subu_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: subu_backend
+    environment:
+      DATABASE_URL: postgresql://subu_user:subu_password@postgres:5432/subu_chatbot
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - subu_network
+    restart: unless-stopped
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: subu_frontend
+    environment:
+      REACT_APP_API_URL: http://backend:8000
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - subu_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  subu_network:
+    driver: bridge
