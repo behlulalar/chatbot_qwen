@@ -1,5 +1,20 @@
 # Sunucuya Değişiklikleri Alma Rehberi
 
+## Değişiklik yaptığımız dosyalar
+
+| Dosya | Açıklama |
+|-------|----------|
+| `backend/app/api/documents.py` | Döküman sayısı fallback, path çözümleme |
+| `backend/setup_data_pipeline.py` | MevzuatChunker kullanımı |
+| `backend/build_vectorstore_only.py` | `--rebuild` seçeneği, path düzeltmesi |
+| `backend/load_manual_documents.py` | **Yeni:** Manuel PDF/JSON yükleme script'i |
+| `backend/data/processed_json/sample_mevzuat.json` | **Yeni:** Örnek mevzuat (demo) |
+| `frontend/src/components/Sidebar.tsx` | Sidebar kapatma, döküman sayısı |
+| `frontend/src/components/Sidebar.css` | Sidebar stilleri |
+| `SUNUCUYA_ALMA.md` | Bu rehber |
+
+---
+
 ## Seçenek 1: Git ile (Önerilen)
 
 ### Mac'te (Local)
@@ -8,7 +23,7 @@ cd /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2
 
 git status
 git add -A
-git commit -m "fix: Doküman sayısı fallback + mobil sidebar kapatma"
+git commit -m "fix: vector store updates"
 git push origin main
 ```
 
@@ -29,18 +44,37 @@ npm run build
 
 ## Seçenek 2: SCP ile Dosya Kopyalama
 
-### Mac'te - Tek komutla tüm değişen dosyaları gönder
-```bash
-# Backend
-scp /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2/backend/app/api/documents.py \
-  root@45.141.150.48:/opt/local_chatbot_subu/backend/app/api/
+Git kullanmıyorsanız Mac'teki proje klasöründen aşağıdaki komutlarla dosyaları sunucuya atabilirsiniz. `subu_chatbot_v2` ve sunucu IP'sini (`45.141.150.48`) kendi yolunuza göre değiştirin.
 
-# Frontend (4 dosya)
-scp /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2/frontend/src/components/{Sidebar.tsx,Sidebar.css,ChatInterface.tsx,ChatInterface.css} \
-  root@45.141.150.48:/opt/local_chatbot_subu/frontend/src/components/
+### Mac'te – Backend dosyalarını atma
+```bash
+# Sunucu adresi (IP'yi kendi sunucunuza göre değiştirin)
+H=root@45.141.150.48
+P=/opt/local_chatbot_subu
+
+# Tek tek atma
+scp backend/app/api/documents.py $H:$P/backend/app/api/
+scp backend/setup_data_pipeline.py backend/build_vectorstore_only.py backend/load_manual_documents.py $H:$P/backend/
+ssh $H "mkdir -p $P/backend/data/processed_json"
+scp backend/data/processed_json/sample_mevzuat.json $H:$P/backend/data/processed_json/
+```
+*(Komutları Mac'te proje klasöründen çalıştırın: `cd /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2`)*
+
+**Tek satırda (hepsini birden):**
+```bash
+cd /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2
+scp backend/setup_data_pipeline.py backend/build_vectorstore_only.py backend/load_manual_documents.py root@45.141.150.48:/opt/local_chatbot_subu/backend/
+scp backend/app/api/documents.py root@45.141.150.48:/opt/local_chatbot_subu/backend/app/api/
+ssh root@45.141.150.48 "mkdir -p /opt/local_chatbot_subu/backend/data/processed_json"
+scp backend/data/processed_json/sample_mevzuat.json root@45.141.150.48:/opt/local_chatbot_subu/backend/data/processed_json/
 ```
 
-### Ubuntu Sunucuda
+### Mac'te – Frontend dosyalarını atma (değiştirdiyseniz)
+```bash
+scp /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2/frontend/src/components/{Sidebar.tsx,Sidebar.css} root@45.141.150.48:/opt/local_chatbot_subu/frontend/src/components/
+```
+
+### Ubuntu sunucuda – Son adım
 ```bash
 sudo systemctl restart subu-backend
 cd /opt/local_chatbot_subu/frontend && npm run build
