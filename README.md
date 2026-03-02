@@ -226,3 +226,4 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 # local_chatbot_subu
 # chatbot_qwen
 # chatbot_qwen
+# chatbot_qwen
