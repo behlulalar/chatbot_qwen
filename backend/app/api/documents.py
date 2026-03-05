@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import resolve_json_directory, resolve_chroma_directory
 from app.database import get_db
 from app.models import Document, DocumentStatus
 from app.schemas.chat import DocumentInfo, DocumentListResponse
@@ -16,40 +17,62 @@ logger = setup_logger("api_documents", "./logs/api_documents.log")
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-def _resolve_json_directory():
-    """Resolve JSON directory path: try cwd (gunicorn), then backend root."""
-    from app.config import settings
-    base = Path(settings.json_directory)
-    if base.is_absolute():
-        return base
-    # Try current working directory first (e.g. gunicorn started from backend/)
-    cwd_base = (Path.cwd() / settings.json_directory).resolve()
-    if cwd_base.exists():
-        return cwd_base
-    # Fallback: backend root (app/api/documents.py -> app -> backend)
-    backend_root = Path(__file__).resolve().parent.parent.parent
-    return (backend_root / settings.json_directory).resolve()
+def _chroma_count_from_path(chroma_path: str) -> Optional[int]:
+    """ChromaDB klasöründen kayıt sayısını döner; hata olursa None."""
+    try:
+        import chromadb
+        path = Path(chroma_path)
+        if not path.exists():
+            return None
+        client = chromadb.PersistentClient(path=chroma_path)
+        for c in client.list_collections():
+            n = c.count()
+            if n > 0:
+                return n
+    except Exception as e:
+        logger.debug(f"Chroma count from {chroma_path!r} failed: {e}")
+    return None
 
 
 def _get_document_count_fallback():
     """
-    Get document count when DB is empty: try vector store, then JSON directory.
-    Uses absolute paths so it works regardless of process cwd.
+    Get document count when DB is empty: try vector store, then ChromaDB direct count, then JSON directory.
+    Uses resolved absolute paths so it works regardless of process cwd.
     """
-    # 1) Vector store count (chunk count; if > 0 we use it as "documents" indicator)
+    chroma_dir = resolve_chroma_directory()
+    chroma_path = str(chroma_dir)
+
+    # 1) Vector store count via VectorStoreManager (needs OpenAI embedding init)
     try:
         from app.rag import VectorStoreManager
-        manager = VectorStoreManager()
+        manager = VectorStoreManager(persist_directory=chroma_path)
         manager.create_or_load()
         stats = manager.get_collection_stats()
         count = stats.get("document_count")
         if count is not None and count > 0:
             return count
     except Exception as e:
-        logger.warning(f"Vector store count fallback failed: {e}")
-    # 2) JSON file count
+        logger.debug(f"Vector store count fallback failed: {e}")
+
+    # 2) ChromaDB doğrudan sayım (embedding gerekmez)
+    n = _chroma_count_from_path(chroma_path)
+    if n is not None and n > 0:
+        return n
+
+    # 3) Sunucuda yaygın mutlak path (resolve yanlış dizin verirse)
+    for extra in [
+        Path.home() / "behlul" / "backend" / "data" / "chroma_db",
+        Path("/home/behlulalar/behlul/backend/data/chroma_db"),
+    ]:
+        if extra.exists():
+            n = _chroma_count_from_path(str(extra))
+            if n is not None and n > 0:
+                logger.info(f"ChromaDB count from fallback path {extra!s}: {n}")
+                return n
+
+    # 4) JSON dosya sayısı
     try:
-        base = _resolve_json_directory()
+        base = resolve_json_directory()
         if base.exists():
             n = len(list(base.glob("*.json")))
             if n > 0:
@@ -57,6 +80,59 @@ def _get_document_count_fallback():
     except Exception as e:
         logger.warning(f"JSON dir count fallback failed: {e}")
     return 0
+
+
+def _chroma_count_and_error(chroma_path: str):
+    """ChromaDB sayısı ve varsa hata mesajı döner."""
+    try:
+        import chromadb
+        path = Path(chroma_path)
+        if not path.exists():
+            return None, f"path does not exist: {chroma_path}"
+        client = chromadb.PersistentClient(path=chroma_path)
+        colls = client.list_collections()
+        for c in colls:
+            n = c.count()
+            if n > 0:
+                return n, None
+        return 0, "no collection with count > 0"
+    except Exception as e:
+        return None, str(e)
+
+
+@router.get("/chroma-debug")
+async def chroma_debug():
+    """
+    ChromaDB path ve sayımını döner; "0 doküman" sorununda kullanılır.
+    """
+    chroma_dir = resolve_chroma_directory()
+    result = {
+        "resolved_path": str(chroma_dir),
+        "path_exists": chroma_dir.exists(),
+        "count": None,
+        "error": None,
+    }
+    n, err = _chroma_count_and_error(str(chroma_dir))
+    if err:
+        result["error"] = err
+    if n is not None and n > 0:
+        result["count"] = n
+        return result
+    for extra in [
+        Path.home() / "behlul" / "backend" / "data" / "chroma_db",
+        Path("/home/behlulalar/behlul/backend/data/chroma_db"),
+    ]:
+        if extra.exists():
+            n, err = _chroma_count_and_error(str(extra))
+            if err:
+                result["error_fallback"] = result.get("error_fallback") or {}
+                result["error_fallback"][str(extra)] = err
+            if n is not None and n > 0:
+                result["count"] = n
+                result["used_fallback_path"] = str(extra)
+                result["error"] = None
+                return result
+    return result
 
 
 @router.get("/", response_model=DocumentListResponse)

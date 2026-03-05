@@ -43,8 +43,8 @@ def sample_pdf_text():
 @pytest.fixture
 def sample_chunk():
     """Sample document chunk for testing."""
-    from langchain.schema import Document
-    
+    from langchain_core.documents import Document
+
     return Document(
         page_content="MADDE 1 - Amaç\nBu yönergenin amacı, ödüllendirme esaslarını belirlemektir.",
         metadata={
@@ -59,8 +59,8 @@ def sample_chunk():
 @pytest.fixture
 def sample_chunks(sample_chunk):
     """Multiple sample chunks for testing."""
-    from langchain.schema import Document
-    
+    from langchain_core.documents import Document
+
     return [
         sample_chunk,
         Document(

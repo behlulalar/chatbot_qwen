@@ -1,11 +1,15 @@
 """
 Main FastAPI application
 """
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.api import chat, documents
+from app.api.documents import chroma_debug
 from app.schemas.chat import HealthResponse
 from app.database import engine, Base
 from app.utils.logger import setup_logger
@@ -36,16 +40,8 @@ app.add_middleware(
 app.include_router(chat.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 
-
-@app.get("/", tags=["root"])
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "SUBU Mevzuat Chatbot API",
-        "version": settings.app_version,
-        "docs": "/docs",
-        "health": "/health"
-    }
+# ChromaDB teşhis (0 doküman sorunu) — hem /api/documents/chroma-debug hem bu yol
+app.add_api_route("/api/chroma-debug", chroma_debug, methods=["GET"], tags=["debug"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["health"])
@@ -69,9 +65,10 @@ async def health_check():
     # Check database
     database_status = "unknown"
     try:
+        from sqlalchemy import text
         from app.database import SessionLocal
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         database_status = "healthy"
     except Exception as e:
@@ -86,6 +83,21 @@ async def health_check():
     )
 
 
+@app.get("/api/health", response_model=HealthResponse, tags=["health"])
+async def api_health_check():
+    return await health_check()
+
+
+# Tek port: frontend build varsa en sonda mount et (/health vb. önce eşlensin)
+_frontend_build = Path(__file__).resolve().parent.parent.parent / "frontend" / "build"
+if _frontend_build.exists() and (_frontend_build / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_build), html=True), name="frontend")
+else:
+    @app.get("/", tags=["root"])
+    async def root():
+        return {"message": "SUBU Mevzuat Chatbot API", "version": settings.app_version, "docs": "/docs", "health": "/health"}
+
+
 if __name__ == "__main__":
     import uvicorn
     
@@ -94,6 +106,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=getattr(settings, "port", 8000),
         reload=settings.debug
     )

@@ -8,7 +8,7 @@ Implements multi-level caching:
 import json
 import hashlib
 import redis
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict, List, cast
 from cachetools import LRUCache
 from datetime import timedelta
 import logging
@@ -112,8 +112,8 @@ class CacheManager:
                 value = self.redis_client.get(key)
                 if value:
                     logger.debug(f"Cache HIT (Redis): {key}")
-                    # Promote to LRU
-                    parsed_value = json.loads(value)
+                    # Promote to LRU (redis returns str when decode_responses=True)
+                    parsed_value = json.loads(cast(str, value))
                     self.lru_cache[key] = parsed_value
                     return parsed_value
             except Exception as e:
@@ -211,9 +211,9 @@ class CacheManager:
         if self.redis_enabled and self.redis_client:
             try:
                 if pattern:
-                    keys = self.redis_client.keys(pattern)
+                    keys = cast(List[str], self.redis_client.keys(pattern))
                     if keys:
-                        count += self.redis_client.delete(*keys)
+                        count += cast(int, self.redis_client.delete(*keys))
                 else:
                     self.redis_client.flushdb()
                 
@@ -238,11 +238,11 @@ class CacheManager:
         
         if self.redis_enabled and self.redis_client:
             try:
-                info = self.redis_client.info('stats')
+                info = cast(Dict[str, Any], self.redis_client.info('stats'))
                 stats.update({
                     "redis_hits": info.get('keyspace_hits', 0),
                     "redis_misses": info.get('keyspace_misses', 0),
-                    "redis_keys": self.redis_client.dbsize()
+                    "redis_keys": cast(int, self.redis_client.dbsize())
                 })
             except Exception as e:
                 logger.error(f"Redis STATS error: {e}")

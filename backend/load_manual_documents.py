@@ -44,6 +44,7 @@ def _backend_path(relative: str) -> Path:
 def main():
     parser = argparse.ArgumentParser(description="Manuel PDF/JSON dosyalarını yükler ve vector store oluşturur.")
     parser.add_argument("--no-db", action="store_true", help="Veritabanına kaydetme, sadece vector store")
+    parser.add_argument("--reprocess-all", action="store_true", help="Tüm PDF'leri yeniden JSON'a çevir (mevcut JSON'ların üzerine yazar)")
     args = parser.parse_args()
 
     raw_dir = _backend_path(settings.download_directory.replace("./", ""))
@@ -53,13 +54,16 @@ def main():
     raw_dir.mkdir(parents=True, exist_ok=True)
     json_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1) PDF → JSON (henüz JSON'u olmayan PDF'ler)
+    # 1) PDF → JSON (henüz JSON'u olmayan PDF'ler; --reprocess-all ile tümü)
     pdf_files = list(raw_dir.glob("*.pdf"))
-    to_process = []
-    for pdf_path in pdf_files:
-        json_name = pdf_path.stem + ".json"
-        if not (json_dir / json_name).exists():
-            to_process.append(str(pdf_path))
+    if args.reprocess_all:
+        to_process = [str(p) for p in pdf_files]
+    else:
+        to_process = []
+        for pdf_path in pdf_files:
+            json_name = pdf_path.stem + ".json"
+            if not (json_dir / json_name).exists():
+                to_process.append(str(pdf_path))
 
     if to_process:
         print(f"  {len(to_process)} PDF JSON'a çevriliyor...")

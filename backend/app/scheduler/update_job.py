@@ -9,6 +9,7 @@ Runs every 24 hours to:
 """
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, cast, List
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -38,7 +39,7 @@ class UpdateScheduler:
         scheduler.start()
     """
     
-    def __init__(self, interval_hours: int = None):
+    def __init__(self, interval_hours: Optional[int] = None):
         """
         Initialize scheduler.
         
@@ -88,32 +89,32 @@ class UpdateScheduler:
             if new_or_updated > 0:
                 logger.info(f"Step 3: Processing {new_or_updated} new/updated documents...")
                 
-                # Get documents to process
-                docs_to_process = tracker.get_documents_to_process()
-                
-                # Process PDFs
-                processor = PDFProcessor()
-                pdf_paths = [doc.pdf_path for doc in docs_to_process]
-                titles = [doc.title for doc in docs_to_process]
-                
-                process_results = processor.process_batch(pdf_paths, titles)
-                
-                # Update database
-                for doc, result in zip(docs_to_process, process_results):
-                    if result["status"] == "success":
-                        tracker.mark_as_processed(
-                            doc.id,
-                            result["json_path"],
-                            result["page_count"]
-                        )
-                    else:
-                        tracker.mark_as_failed(doc.id, result.get("error", "Unknown error"))
-                
-                logger.info(f"Processing complete: {len([r for r in process_results if r['status'] == 'success'])} successful")
-                
-                # Step 4: Update vector store
-                logger.info("Step 4: Updating vector store...")
-                self._update_vector_store(docs_to_process)
+                # Get documents to process (only those with pdf_path)
+                docs_to_process = [d for d in tracker.get_documents_to_process() if d.pdf_path]
+                if not docs_to_process:
+                    logger.info("No documents with valid pdf_path to process")
+                else:
+                    processor = PDFProcessor()
+                    pdf_paths = cast(List[str], [d.pdf_path for d in docs_to_process])
+                    titles = cast(List[Optional[str]], [d.title for d in docs_to_process])
+                    process_results = processor.process_batch(pdf_paths, titles)
+
+                    # Update database
+                    for doc, result in zip(docs_to_process, process_results):
+                        if result["status"] == "success":
+                            tracker.mark_as_processed(
+                                doc.id,
+                                result["json_path"],
+                                result["page_count"]
+                            )
+                        else:
+                            tracker.mark_as_failed(doc.id, result.get("error", "Unknown error"))
+
+                    logger.info(f"Processing complete: {len([r for r in process_results if r['status'] == 'success'])} successful")
+
+                    # Step 4: Update vector store
+                    logger.info("Step 4: Updating vector store...")
+                    self._update_vector_store(docs_to_process)
                 
             else:
                 logger.info("No new or updated documents. Skipping processing.")

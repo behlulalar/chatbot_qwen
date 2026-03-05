@@ -41,8 +41,9 @@ def main():
     print("=" * 80)
     print(f"🚀 {settings.app_name} v{settings.app_version}")
     print("=" * 80)
-    print(f"\n📍 API Server: http://localhost:8000")
-    print(f"📖 API Docs: http://localhost:8000/docs")
+    port = getattr(settings, "port", 8000)
+    print(f"\n📍 API Server: http://localhost:{port}")
+    print(f"📖 API Docs: http://localhost:{port}/docs")
     print(f"⏰ Update Interval: {settings.update_interval} hours")
     print(f"\n⚠️  Press Ctrl+C to stop\n")
     
@@ -77,7 +78,7 @@ def main():
         uvicorn.run(
             "app.main:app",
             host="0.0.0.0",
-            port=8000,
+            port=port,
             reload=settings.debug,
             log_level="info"
         )

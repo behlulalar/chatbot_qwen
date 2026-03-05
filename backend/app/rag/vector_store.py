@@ -4,7 +4,8 @@ Vector Store Manager - Manages ChromaDB vector store for RAG.
 from typing import List, Optional, Dict
 from pathlib import Path
 
-from langchain.schema import Document
+from pydantic import SecretStr
+from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 
 try:
@@ -37,7 +38,7 @@ class VectorStoreManager:
     
     def __init__(
         self,
-        persist_directory: str = None,
+        persist_directory: Optional[str] = None,
         collection_name: str = "mevzuat_collection"
     ):
         """
@@ -57,7 +58,7 @@ class VectorStoreManager:
         
         logger.info(f"VectorStoreManager initialized: {self.persist_directory}")
     
-    def initialize_embeddings(self, openai_api_key: str = None):
+    def initialize_embeddings(self, openai_api_key: Optional[str] = None):
         """
         Initialize OpenAI embeddings.
         
@@ -65,10 +66,12 @@ class VectorStoreManager:
             openai_api_key: OpenAI API key (defaults to settings)
         """
         api_key = openai_api_key or settings.openai_api_key
-        
+        if not api_key:
+            raise ValueError("OpenAI API key required for embeddings")
+
         self.embeddings = OpenAIEmbeddings(
             model=settings.embedding_model,
-            openai_api_key=api_key
+            api_key=SecretStr(api_key)
         )
         
         logger.info(f"OpenAI embeddings initialized: {settings.embedding_model}")
@@ -121,7 +124,8 @@ class VectorStoreManager:
         """
         if not self.vectorstore:
             self.create_or_load()
-        
+        assert self.vectorstore is not None
+
         logger.info(f"Adding {len(documents)} documents to vector store (batch_size={batch_size})")
         
         all_ids = []
@@ -164,7 +168,8 @@ class VectorStoreManager:
         """
         if not self.vectorstore:
             self.create_or_load()
-        
+        assert self.vectorstore is not None
+
         logger.debug(f"Searching for: '{query}' (k={k})")
         
         if filter_dict:
@@ -198,7 +203,8 @@ class VectorStoreManager:
         """
         if not self.vectorstore:
             self.create_or_load()
-        
+        assert self.vectorstore is not None
+
         logger.debug(f"Searching with scores: '{query}' (k={k})")
         
         if filter_dict:
@@ -229,7 +235,8 @@ class VectorStoreManager:
         """
         if not self.vectorstore:
             self.create_or_load()
-        
+        assert self.vectorstore is not None
+
         try:
             # Get collection
             collection = self.vectorstore._collection
@@ -259,7 +266,8 @@ class VectorStoreManager:
         """
         if not self.vectorstore:
             self.create_or_load()
-        
+        assert self.vectorstore is not None
+
         search_kwargs = search_kwargs or {"k": 5}
         
         retriever = self.vectorstore.as_retriever(

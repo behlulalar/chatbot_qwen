@@ -1,7 +1,11 @@
 """
 Chat API endpoints
 """
+import asyncio
+from queue import Queue
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import json
@@ -15,6 +19,7 @@ logger = setup_logger("api_chat", "./logs/api_chat.log")
 
 # Initialize response generator (singleton)
 generator = None
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="chat")
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -45,8 +50,9 @@ async def chat(request: ChatRequest):
         # Get generator
         gen = get_generator()
         
-        # Generate response
-        response = gen.generate_response(
+        # Run heavy sync work in thread pool - prevents blocking event loop (UI freeze)
+        response = await asyncio.to_thread(
+            gen.generate_response,
             question=request.question,
             conversation_history=request.conversation_history,
             include_sources=request.include_sources
@@ -83,17 +89,32 @@ async def chat_stream(request: ChatRequest):
         logger.info(f"Received streaming chat request: '{request.question[:50]}...'")
         
         gen = get_generator()
-        
-        async def generate():
-            """Generate streaming response."""
+        chunk_queue: Queue = Queue()
+
+        def _produce_chunks():
             try:
                 for chunk in gen.generate_response_stream(request.question):
-                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-                
-                yield "data: {\"done\": true}\n\n"
-            
+                    chunk_queue.put(("chunk", chunk))
+                chunk_queue.put(("done", None))
             except Exception as e:
                 logger.error(f"Error in streaming: {e}", exc_info=True)
+                chunk_queue.put(("error", e))
+
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(_executor, _produce_chunks)
+
+        async def generate():
+            try:
+                while True:
+                    kind, payload = await asyncio.to_thread(lambda: chunk_queue.get())
+                    if kind == "done":
+                        break
+                    if kind == "error":
+                        raise payload  # type: ignore[misc]
+                    yield f"data: {json.dumps({'chunk': payload})}\n\n"
+                yield "data: {\"done\": true}\n\n"
+            except Exception as e:
+                logger.error(f"Error yielding stream: {e}", exc_info=True)
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
         
         return StreamingResponse(

@@ -28,7 +28,7 @@ def test_settings_from_env(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite:///./test.db")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     
-    settings = Settings()
+    settings = Settings()  # type: ignore[call-arg]
     
     assert settings.app_name == "Test Chatbot"
     assert settings.model_name == "gpt-4"

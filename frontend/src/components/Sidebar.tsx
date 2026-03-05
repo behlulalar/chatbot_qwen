@@ -4,7 +4,7 @@ import { MessagesSquare, PlusCircle, FileText, ChevronDown, ChevronUp, Trash2, X
 import './Sidebar.css';
 import { getSessions, deleteSession, ChatSession } from '../utils/sessionStorage';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim() !== '') ? process.env.REACT_APP_API_URL : (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8000');
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface SidebarProps {
   onStartNewChat: () => void;
   onLoadSession: (sessionId: string) => void;
   currentSessionId: string | null;
+  sessionRefreshTrigger?: number;
 }
 
 interface DocumentInfo {
@@ -29,20 +30,21 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClearChat,
   onStartNewChat,
   onLoadSession,
-  currentSessionId
+  currentSessionId,
+  sessionRefreshTrigger = 0
 }) => {
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [totalDocuments, setTotalDocuments] = useState<number>(0);
-  const [showDocuments, setShowDocuments] = useState(false);  // Default collapsed
+  const [showDocuments, setShowDocuments] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
       fetchDocuments();
-      loadSessions();
     }
-  }, [isOpen, refreshKey]);
+    loadSessions();
+  }, [isOpen, refreshKey, sessionRefreshTrigger]);
 
   const loadSessions = () => {
     const allSessions = getSessions();

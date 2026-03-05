@@ -1,9 +1,10 @@
 """
 OpenAI Handler - Manages OpenAI API interactions.
 """
-from typing import List, Dict, Optional, Generator
+from typing import List, Dict, Optional, Generator, Any, cast
 import time
 from openai import OpenAI
+from openai.types.chat import ChatCompletion
 
 from app.config import settings
 from app.utils.logger import setup_logger
@@ -28,10 +29,10 @@ class OpenAIHandler:
     
     def __init__(
         self,
-        api_key: str = None,
-        model: str = None,
-        temperature: float = None,
-        max_tokens: int = None
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None
     ):
         """
         Initialize OpenAI handler.
@@ -46,16 +47,26 @@ class OpenAIHandler:
         self.model = model or settings.model_name
         self.temperature = temperature if temperature is not None else settings.temperature
         self.max_tokens = max_tokens or settings.max_tokens
+        self.base_url = getattr(settings, "llm_base_url", None)  # Ollama: http://localhost:11434/v1
         
-        self.client = OpenAI(api_key=self.api_key)
+        if self.base_url:
+            # Ollama yerel model; büyük context ile 2–3 dakika sürebilir
+            self.client = OpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key or "ollama",
+                timeout=180.0,
+            )
+        else:
+            self.client = OpenAI(api_key=self.api_key)
         
-        logger.info(f"OpenAIHandler initialized: model={self.model}, temp={self.temperature}")
+        backend = "Ollama (local)" if self.base_url else "OpenAI"
+        logger.info(f"OpenAIHandler initialized: model={self.model}, backend={backend}, temp={self.temperature}")
     
     def chat_completion(
         self,
         messages: List[Dict[str, str]],
-        temperature: float = None,
-        max_tokens: int = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
         stream: bool = False
     ) -> Dict:
         """
@@ -72,30 +83,35 @@ class OpenAIHandler:
         """
         temp = temperature if temperature is not None else self.temperature
         max_tok = max_tokens if max_tokens is not None else self.max_tokens
+        max_tok = max_tok or 2000
         
         start_time = time.time()
         
         try:
-            logger.debug(f"Calling OpenAI API: {self.model}, {len(messages)} messages")
+            logger.debug(f"Calling {self.model}: {len(messages)} messages, max_tokens={max_tok}")
             
-            response = self.client.chat.completions.create(
+            raw = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=cast(Any, messages),
                 temperature=temp,
                 max_tokens=max_tok,
                 stream=stream
             )
             
             if stream:
-                return response
+                return raw  # type: ignore[return-value]
             
-            # Extract response
-            content = response.choices[0].message.content
-            
+            response = cast(ChatCompletion, raw)
+            # Extract response (Ollama bazen None dönebilir)
+            content = (response.choices[0].message.content or "").strip() if response.choices else ""
+            if not content and response.choices:
+                content = getattr(response.choices[0].message, "content", "") or ""
+
             # Token usage
-            prompt_tokens = response.usage.prompt_tokens
-            completion_tokens = response.usage.completion_tokens
-            total_tokens = response.usage.total_tokens
+            usage = response.usage
+            prompt_tokens = usage.prompt_tokens if usage else 0
+            completion_tokens = usage.completion_tokens if usage else 0
+            total_tokens = usage.total_tokens if usage else 0
             
             # Calculate cost (approximate)
             cost = self._calculate_cost(prompt_tokens, completion_tokens)
@@ -122,8 +138,8 @@ class OpenAIHandler:
     def chat_completion_stream(
         self,
         messages: List[Dict[str, str]],
-        temperature: float = None,
-        max_tokens: int = None
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None
     ) -> Generator[str, None, None]:
         """
         Get streaming chat completion.
@@ -138,13 +154,14 @@ class OpenAIHandler:
         """
         temp = temperature if temperature is not None else self.temperature
         max_tok = max_tokens if max_tokens is not None else self.max_tokens
+        max_tok = max_tok or 2000
         
         try:
-            logger.debug(f"Starting streaming completion: {self.model}")
+            logger.debug(f"Starting streaming: {self.model}, max_tokens={max_tok}")
             
             stream = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=cast(Any, messages),
                 temperature=temp,
                 max_tokens=max_tok,
                 stream=True
@@ -164,43 +181,35 @@ class OpenAIHandler:
     def _calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """
         Calculate approximate cost based on token usage.
-        
-        Pricing (as of 2024):
-        - GPT-4-turbo: $0.01/1K prompt, $0.03/1K completion
-        - GPT-3.5-turbo: $0.0005/1K prompt, $0.0015/1K completion
-        
-        Args:
-            prompt_tokens: Number of prompt tokens
-            completion_tokens: Number of completion tokens
-        
-        Returns:
-            Estimated cost in USD
+        Local models (Ollama vb.): 0
         """
-        if "gpt-4" in self.model.lower():
-            prompt_cost = (prompt_tokens / 1000) * 0.01
-            completion_cost = (completion_tokens / 1000) * 0.03
-        else:  # GPT-3.5 and others
-            prompt_cost = (prompt_tokens / 1000) * 0.0005
-            completion_cost = (completion_tokens / 1000) * 0.0015
-        
+        if self.base_url or "ollama" in (self.api_key or "").lower():
+            return 0.0
+
+        model = self.model.lower()
+        if "gpt-4o-mini" in model:
+            prompt_cost = (prompt_tokens / 1_000_000) * 0.15
+            completion_cost = (completion_tokens / 1_000_000) * 0.60
+        elif "gpt-4o" in model:
+            prompt_cost = (prompt_tokens / 1_000_000) * 2.50
+            completion_cost = (completion_tokens / 1_000_000) * 10.00
+        elif "gpt-4" in model:
+            prompt_cost = (prompt_tokens / 1_000_000) * 30.00
+            completion_cost = (completion_tokens / 1_000_000) * 60.00
+        else:
+            prompt_cost = (prompt_tokens / 1_000_000) * 0.50
+            completion_cost = (completion_tokens / 1_000_000) * 1.50
+
         return prompt_cost + completion_cost
     
     def count_tokens(self, text: str) -> int:
-        """
-        Estimate token count for text.
-        
-        This is a rough estimate: ~4 chars = 1 token for English,
-        ~2-3 chars = 1 token for Turkish.
-        
-        Args:
-            text: Text to count tokens for
-        
-        Returns:
-            Estimated token count
-        """
-        # Rough estimation for Turkish
-        # More accurate: use tiktoken library
-        return len(text) // 3
+        """Count tokens using tiktoken (falls back to estimate if unavailable)."""
+        try:
+            import tiktoken
+            enc = tiktoken.encoding_for_model(self.model)
+            return len(enc.encode(text))
+        except Exception:
+            return len(text) // 3
     
     def format_messages(
         self,

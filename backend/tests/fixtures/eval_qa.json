@@ -1,0 +1,402 @@
+[
+  {
+    "id": 1,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "easy",
+    "question": "Öğrenci e-posta adresleri hangi standart formatta belirlenmektedir?",
+    "expected_answer": "ogrencinumarası@subu.edu.tr şeklinde düzenlenir."
+  },
+  {
+    "id": 2,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "easy",
+    "question": "Kurumdan istifa eden veya mezun olan öğrencilerin e-posta hesapları ne kadar süre sonra kapatılır?",
+    "expected_answer": "6 ay sonra kapatılır."
+  },
+  {
+    "id": 3,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "medium",
+    "question": "İdari personelin e-posta (drive) kotası kaç GB'dır ve bu personel emekli olduğunda kotası kaça düşürülür?",
+    "expected_answer": "10GB'dır, personel emekli olursa kotası 1 GB'a düşürülür."
+  },
+  {
+    "id": 4,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "medium",
+    "question": "Akademik veya idari personelin e-posta hesapları hangi birimin talebi üzerine açılır?",
+    "expected_answer": "Personel Daire Başkanlığının talebi üzerine Bilgi İşlem Daire Başkanlığı tarafından oluşturulur."
+  },
+  {
+    "id": 5,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "hard",
+    "question": "Birimler adına kullanılacak kurumsal e-posta adresi talebinde bulunurken, Bilgi İşlem Daire Başkanlığı'na yazılacak resmi yazıda hangi bilgilerin yer alması zorunludur?",
+    "expected_answer": "Hesabın ne amaçla açılacağı, kimin sorumluluğunda olacağı ve ne kadar süre ile açık kalacağı belirtilmelidir."
+  },
+  {
+    "id": 6,
+    "source": "KYS.YNG.005",
+    "document": "E-Posta Yönergesi",
+    "difficulty": "hard",
+    "question": "E-posta adresinin toplumda aşağılayıcı veya küçük düşürücü ifadeler içermesi gibi istisnai durumlarda adres değişikliği için süreç nasıl ilerler?",
+    "expected_answer": "Bilgi İşlem Daire Başkanlığı'na dilekçe ile başvurulur ve uygun bulunması durumunda adres değiştirilir."
+  },
+  {
+    "id": 7,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "easy",
+    "question": "Üniversitede güvenlik soruşturması ve arşiv araştırması işlemleri hangi birim tarafından yerine getirilir?",
+    "expected_answer": "Personel Dairesi Başkanlığınca yerine getirilir."
+  },
+  {
+    "id": 8,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "easy",
+    "question": "Kimler hakkında güvenlik soruşturması ve arşiv araştırması zorunludur?",
+    "expected_answer": "Açıktan veya yeniden atanacak personel ile Rektörün hakkında araştırma yapılmasını isteyeceği personel için zorunludur."
+  },
+  {
+    "id": 9,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "medium",
+    "question": "Üniversitede hangi yerler ve görevler \"gizlilik dereceli\" kapsamına alınmıştır?",
+    "expected_answer": "Tüm Akademik ve İdari Birimleri ile bu birimlerde yürütülen görevler gizlilik dereceli yer ve görev olarak belirlenmiştir."
+  },
+  {
+    "id": 10,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "medium",
+    "question": "Soruşturma sonuçlarını incelemek üzere kurulan \"değerlendirme komisyonu\" kimlerden oluşur?",
+    "expected_answer": "Rektörün başkanlığında, personel birim amiri, hukuk müşaviri ve güvenlik işlerinden sorumlu birim amirinden oluşur."
+  },
+  {
+    "id": 11,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "hard",
+    "question": "\"Arşiv araştırması\" tanımı yasal olarak neleri kapsar?",
+    "expected_answer": "Kişinin kolluk kuvvetleri tarafından aranıp aranmadığının, istihbarat ünitelerinde ilişiği ile adli sicil kaydının ve hakkında herhangi bir tehdit olup olmadığının kayıtlardan saptanmasını kapsar."
+  },
+  {
+    "id": 12,
+    "source": "KYS.YNG.054",
+    "document": "Güvenlik Soruşturması ve Arşiv Araştırması Yönergesi",
+    "difficulty": "hard",
+    "question": "Güvenlik soruşturmasının yenilenmesi hangi prosedüre bağlıdır?",
+    "expected_answer": "Gerekli görülen hallerde atamaya yetkili amirin talebi üzerine istenebilir."
+  },
+  {
+    "id": 13,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "easy",
+    "question": "İşçiler hakkında uygulanacak disiplin cezaları nelerdir?",
+    "expected_answer": "Uyarma, kınama, ücret kesme ve haklı nedenle fesih."
+  },
+  {
+    "id": 14,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "easy",
+    "question": "Uyarma, kınama ve ücret kesme cezaları hangi makam tarafından verilir?",
+    "expected_answer": "Birim amirinin önerisi üzerine Genel Sekreter tarafından verilir."
+  },
+  {
+    "id": 15,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "medium",
+    "question": "Verilen disiplin cezalarına itiraz süresi kaç gündür ve itiraz kime yapılır?",
+    "expected_answer": "Cezanın tebliğinden itibaren yedi gün içinde Rektörlük Makamına itiraz edilebilir."
+  },
+  {
+    "id": 16,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "medium",
+    "question": "Mazeretsiz olarak bir ayda aralıklı 2 iş günü işe gelmeyen işçiye hangi oranda ceza uygulanır?",
+    "expected_answer": "2 günlük net ücreti tutarında ücret kesme cezası uygulanır."
+  },
+  {
+    "id": 17,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "hard",
+    "question": "Ahlak ve iyi niyet kurallarına uymayan hallere dayanarak iş sözleşmesinin haklı nedenle feshi yetkisi ne kadarlık bir zamanaşımı süresine tabidir?",
+    "expected_answer": "Birim amirinin öğrendiği günden başlayarak altı iş günü geçtikten ve her halde fiilin gerçekleşmesinden itibaren bir yıl sonra kullanılamaz."
+  },
+  {
+    "id": 18,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "hard",
+    "question": "İşçinin, işyerinde yedi günden fazla hapisle cezalandırılan ve cezası ertelenmeyen bir suç işlemesi durumunda savunma alma süreci nasıl işler?",
+    "expected_answer": "Bu durumda işçinin savunmasının alınmasına gerek yoktur."
+  },
+  {
+    "id": 19,
+    "source": "KYS.YNT.025",
+    "document": "İşçi Kadrosundaki Personele Ait İşyeri Disiplin Yönetmeliği",
+    "difficulty": "hard",
+    "question": "Kınama veya uyarma cezası gerektiren bir fiilin 6 ay içerisinde ikinci kez işlenmesi durumunda nasıl bir yaptırım uygulanır?",
+    "expected_answer": "3 günlük net ücreti tutarında ücret kesme cezası uygulanır."
+  },
+  {
+    "id": 20,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "easy",
+    "question": "Dört yıllık lisans programlarının azami öğrenim süresi kaç dönemdir?",
+    "expected_answer": "Azami yedi yıl (14 dönem) olarak belirlenmiştir."
+  },
+  {
+    "id": 21,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "easy",
+    "question": "Zorunlu yabancı dil hazırlık sınıfının azami eğitim süresi ne kadardır?",
+    "expected_answer": "İki yıldır."
+  },
+  {
+    "id": 22,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "medium",
+    "question": "Azami süresini dolduran öğrencilere tanınan \"Ek Sınav\" hakları hangi dersleri kapsar?",
+    "expected_answer": "Hiç almadığı, devam koşulunu yerine getirmediği ve başarısız oldukları (FF, FD, GR, DZ, YZ) dersleri kapsar."
+  },
+  {
+    "id": 23,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "medium",
+    "question": "Staj, işyeri uygulaması veya bitirme çalışması gibi sınav yapılamayan derslerin sayısı 5'ten fazla olan bir öğrencinin azami süre sonundaki durumu ne olur?",
+    "expected_answer": "Ek sınav hakkı kullanamaz ve Üniversite ile ilişiği doğrudan kesilir."
+  },
+  {
+    "id": 24,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "hard",
+    "question": "Tüm derslerini başarıyla tamamlamış ancak mezuniyet için gerekli 2.00 GNO şartını sağlayamayan öğrenciye hangi sınav hakkı tanınır?",
+    "expected_answer": "Dilediği derslerden sınırsız süre boyunca Ek Süre Sınav hakkı kullanabilir."
+  },
+  {
+    "id": 25,
+    "source": "KYS.YNG.041",
+    "document": "Azami Süre Yönergesi",
+    "difficulty": "hard",
+    "question": "Sınırsız sınav hakkı kazanan bir öğrenci hangi ihlali yaparsa bu hakkından vazgeçmiş sayılarak okuldan ilişiği kesilir?",
+    "expected_answer": "Açılacak sınavlara üst üste veya aralıklı olarak toplam 3 (üç) eğitim-öğretim yılı katılmaması halinde."
+  },
+  {
+    "id": 26,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "easy",
+    "question": "Öğrencilerin normal bir dönemdeki ders yükü toplam kaç AKTS olmalıdır?",
+    "expected_answer": "30 AKTS'dir."
+  },
+  {
+    "id": 27,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "easy",
+    "question": "Sınav sonuçlarına maddi hata itirazı kaç iş günü içinde yapılmalıdır?",
+    "expected_answer": "Sınav sonuçlarının ilanını izleyen 5 iş günü içinde yapılmalıdır."
+  },
+  {
+    "id": 28,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "medium",
+    "question": "Teorik ve uygulamalı derslere devam zorunluluğu yüzdeleri nelerdir?",
+    "expected_answer": "Teorik derslere %70, uygulamalı derslere ise %80 oranında devam zorunludur."
+  },
+  {
+    "id": 29,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "medium",
+    "question": "Lisans programlarındaki öğrencilerin üst sınıftan ders alabilmesi için Genel Not Ortalaması (GNO) asgari kaç olmalıdır?",
+    "expected_answer": "Genel not ortalaması 2.50 ve üzeri olmalıdır."
+  },
+  {
+    "id": 30,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "hard",
+    "question": "Staj hariç tüm derslerden devam şartını sağlayıp sadece tek bir dersten başarısız olan öğrenciye hangi imkân tanınır?",
+    "expected_answer": "Akademik takvimde belirlenen tarihlerde tek ders sınav hakkı verilir."
+  },
+  {
+    "id": 31,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "hard",
+    "question": "Öğrenci, danışman onayı ile dönemin en geç kaçıncı haftasına kadar dersten çekilme işlemi yapabilir?",
+    "expected_answer": "Dönemin dördüncü haftası sonuna kadar çekilebilir."
+  },
+  {
+    "id": 32,
+    "source": "KYS.YNT.023",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönetmeliği",
+    "difficulty": "hard",
+    "question": "Transkript üzerinde \"Mükemmel\" derecesi ile mezun olabilmek için başarı notu hangi aralıkta olmalıdır?",
+    "expected_answer": "Başarı notu 3.50 (dâhil)-4.00 arasında olmalıdır."
+  },
+  {
+    "id": 33,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "easy",
+    "question": "Bir seçmeli dersin açılabilmesi için gerekli asgari kayıtlı öğrenci sayısı kaçtır?",
+    "expected_answer": "En az 20'dir."
+  },
+  {
+    "id": 34,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "easy",
+    "question": "Hastalık durumunda mazeret sınavı hakkı kazanabilmek için sağlık raporu en geç kaç iş günü içinde teslim edilmelidir?",
+    "expected_answer": "Sınav tarihinden itibaren en geç üç (3) iş günü içinde teslim edilmelidir."
+  },
+  {
+    "id": 35,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "medium",
+    "question": "Bitirme çalışması dersine yazılmak isteyen bir öğrencinin Genel Not Ortalaması minimum kaç olmalıdır?",
+    "expected_answer": "1.80 ve üzeri olması gerekir."
+  },
+  {
+    "id": 36,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "medium",
+    "question": "%10 Başarı değerlendirmesine girebilmek için gereken minimum dönem ortalaması nedir?",
+    "expected_answer": "Dönem ortalaması 2,00'ın altında olan öğrenci değerlendirmeye alınmaz."
+  },
+  {
+    "id": 37,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "hard",
+    "question": "Staj dersine yazılıp 1 yıl içinde stajını yapmayan öğrencinin durumu sisteme nasıl işlenir?",
+    "expected_answer": "Sınavı başarana kadar notu \"Stajı Eksik (E)\" olarak sisteme girilir."
+  },
+  {
+    "id": 38,
+    "source": "KYS.YNG.045",
+    "document": "Lisans ve Ön Lisans Eğitim-Öğretim ve Sınav Yönergesi",
+    "difficulty": "hard",
+    "question": "Sınav esnasında cep telefonu veya akıllı saatini ulaşabileceği bir yerde açık veya sessiz modda tutan öğrenciye hangi yaptırım uygulanır?",
+    "expected_answer": "Sınavı geçersiz sayılır, \"0\" notu alır, \"Kopya Çekmeye Teşebbüs Ettiği\" kabul edilerek disiplin işlemleri (2547 sayılı Kanun madde 54) başlatılır."
+  },
+  {
+    "id": 39,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "easy",
+    "question": "Yangın anında aranması gereken acil çağrı numarası kaçtır?",
+    "expected_answer": "112."
+  },
+  {
+    "id": 40,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "easy",
+    "question": "Binada oluşturulması gereken acil durum ekipleri hangileridir?",
+    "expected_answer": "Söndürme Ekibi, Kurtarma Ekibi, Koruma Ekibi ve İlk Yardım Ekibi."
+  },
+  {
+    "id": 41,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "medium",
+    "question": "Düşük tehlike sınıfındaki binalarda her kaç metrekare için bir yangın söndürme tüpü bulundurulmalıdır?",
+    "expected_answer": "Her 500 m2 yapı inşaat alanı için bir adet 6 kg yangın söndürme tüpü bulundurulmalıdır."
+  },
+  {
+    "id": 42,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "medium",
+    "question": "Binalardaki yönlendirme ve acil çıkış tabelalarının aydınlatmaları elektrik kesintisinde ne kadar süre işlevsel kalmalıdır?",
+    "expected_answer": "Otomatik devreye girerek en az iki saat süreyle işlev görmesi gerekir."
+  },
+  {
+    "id": 43,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "hard",
+    "question": "\"E Sınıfı Yangın\" nedir ve bu tür yangınlarda hangi tipte söndürücü kullanılmalıdır?",
+    "expected_answer": "Elektrik yangınını ifade eder; iletken olmayan KKT, halokarbon veya karbondioksitli söndürücü kullanılmalıdır."
+  },
+  {
+    "id": 44,
+    "source": "KYS.YNG.029",
+    "document": "Yangın Önleme ve Söndürme Yönergesi",
+    "difficulty": "hard",
+    "question": "Taşınabilir yangın söndürme cihazlarının hidrostatik testleri ve genel bakımları hangi zaman aralığında yapılır?",
+    "expected_answer": "4 (dört) yıllık genel bakımlarında toz yenilenerek hidrostatik testleri yapılır."
+  },
+  {
+    "id": 45,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "easy",
+    "question": "İşletmede Mesleki Eğitim dersi kapsamında öğrencinin devamsızlık hakkı en fazla yüzde kaçtır?",
+    "expected_answer": "Sürenin %20'sini geçemez."
+  },
+  {
+    "id": 46,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "easy",
+    "question": "İşletmede mesleki eğitim ve zorunlu stajın başarı notu değerlendirmesinde geçme notu en az kaçtır?",
+    "expected_answer": "Yüz üzerinden en az altmış beş (65) olması gereklidir."
+  },
+  {
+    "id": 47,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "medium",
+    "question": "İşletmede mesleki eğitim için öğrencilerin genel not ortalaması en az kaç olmalıdır?",
+    "expected_answer": "Genel not ortalaması 1,80'in altında olan öğrenciler işletmede mesleki eğitim dersini seçemezler."
+  },
+  {
+    "id": 48,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "medium",
+    "question": "Lisans programlarında işletmede mesleki eğitim süresi toplamda kaç hafta olarak uygulanır?",
+    "expected_answer": "16 (14+2) hafta süre ile yapılır."
+  },
+  {
+    "id": 49,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "hard",
+    "question": "İşletmede mesleki eğitim sırasında işletmenin kusurundan doğan iş kazalarında hukuki sorumluluk kime aittir?",
+    "expected_answer": "3308 sayılı Kanunun 25 inci maddesine göre işveren sorumludur."
+  },
+  {
+    "id": 50,
+    "source": "KYS.YNG.046",
+    "document": "Lisans ve Ön Lisans Uygulamalı Eğitimler Yönergesi",
+    "difficulty": "hard",
+    "question": "Uygulamalı eğitim grupları oluşturulurken bir gruptaki öğrenci sayısı asgari kaç kişiden oluşmalıdır?",
+    "expected_answer": "Beşten az olamaz (öğrenci sayısı beşten az ise bir grup oluşturulabilir)."
+  }
+]

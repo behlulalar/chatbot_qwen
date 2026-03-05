@@ -257,17 +257,42 @@ class QDMSScraper:
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
     
-    def scrape_and_download_all(self) -> List[Dict[str, any]]:
+    def scrape_and_download_all(self, sources: Optional[List[str]] = None) -> List[Dict[str, any]]:
         """
-        Complete workflow: Extract links and download all PDFs.
+        Complete workflow: Extract links from configured QDMS page(s) and download all PDFs.
+        
+        Args:
+            sources: Which pages to scrape. None = both, ["yonergeler"] = only yonergeler,
+                     ["yonetmelikler"] = only yonetmelikler.
         
         Returns:
             List of download results
         """
         logger.info("Starting full scrape and download workflow")
         
-        # Extract links
-        links = self.extract_qdms_links()
+        url_map = {
+            "yonergeler": settings.qdms_url,
+            "yonetmelikler": settings.qdms_yonetmelikler_url,
+        }
+        if sources is None:
+            urls_to_scrape = list(url_map.values())
+        else:
+            urls_to_scrape = [url_map[s] for s in sources if s in url_map]
+        if not urls_to_scrape:
+            logger.warning("No valid sources to scrape")
+            return []
+        
+        # Extract links from selected page(s)
+        all_links = []
+        seen_urls = set()
+        for source_url in urls_to_scrape:
+            logger.info(f"Extracting links from: {source_url}")
+            links = self.extract_qdms_links(url=source_url)
+            for link in links:
+                if link["url"] not in seen_urls:
+                    seen_urls.add(link["url"])
+                    all_links.append(link)
+        links = all_links
         
         if not links:
             logger.warning("No QDMS links found")

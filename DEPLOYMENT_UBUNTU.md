@@ -7,7 +7,79 @@ Bu rehber, SUBU Mevzuat Chatbot'u Ubuntu 22.04 sunucuya deploy etmek için adım
 - Ubuntu 22.04 LTS sunucu
 - Root veya sudo yetkisi
 - Domain adı (opsiyonel, nginx için)
-- OpenAI API key
+- **LLM:** OpenAI API key **veya** yerel Qwen 14B (Ollama)
+- **Embedding:** ChromaDB için OpenAI API key (vektör arama; Qwen sadece cevap üretimi için kullanılır)
+
+---
+
+## 🦙 Qwen 14B ile Çalıştırma (Ollama) – Sunucu için önerilen
+
+Sunucuda OpenAI yerine yerel **Qwen 14B** kullanmak için:
+
+### 1. Ollama kurulumu (Ubuntu)
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+### 2. Qwen 14B modelini indir
+
+```bash
+ollama pull qwen2.5:14b
+# Daha az RAM için: ollama pull qwen2.5:7b
+```
+
+### 3. Ollama servisini başlat (zaten çalışıyor olabilir)
+
+```bash
+sudo systemctl status ollama
+sudo systemctl enable ollama
+sudo systemctl start ollama
+```
+
+### 4. Backend .env ayarları
+
+`backend/.env` içinde:
+
+```env
+# LLM = Qwen (Ollama). Embedding için OpenAI key gerekli (ChromaDB).
+LLM_BASE_URL=http://localhost:11434/v1
+MODEL_NAME=qwen2.5:14b
+MAX_TOKENS=2000
+TEMPERATURE=0.1
+
+# Embedding için (ChromaDB arama) – zorunlu
+OPENAI_API_KEY=sk-your-openai-key-for-embeddings-only
+
+# Diğer ayarlar (DATABASE_URL, CORS_ORIGINS vb.) aynı
+```
+
+### 5. Backend’i yeniden başlat
+
+```bash
+sudo systemctl restart subu-backend
+# veya Docker: docker-compose restart backend
+```
+
+### 6. Nginx timeout (yerel model daha yavaş olabilir)
+
+Yerel model kullanıyorsanız API yanıt süresi uzayabilir; Nginx proxy timeout’unu artırın:
+
+```nginx
+# /api ve /health için
+proxy_connect_timeout 120s;
+proxy_send_timeout 120s;
+proxy_read_timeout 120s;
+```
+
+Bu ayarlar aşağıdaki “Nginx Konfigürasyonu” bölümünde örnekte güncellenmiştir.
+
+### Donanım notu
+
+- **Qwen 14B:** En az ~16 GB RAM (veya swap) önerilir.
+- **Qwen 7B:** ~8 GB RAM yeterli olabilir; `MODEL_NAME=qwen2.5:7b` yapın.
+
+---
 
 ## 🚀 Hızlı Deployment (Docker ile)
 
@@ -266,7 +338,7 @@ server {
         }
     }
 
-    # Backend API
+    # Backend API (Ollama/Qwen kullanıyorsanız 120s önerilir)
     location /api {
         proxy_pass http://backend_api;
         proxy_set_header Host $host;
@@ -274,10 +346,10 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        # Timeouts (yerel LLM için 120s)
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
     }
 
     # Health check

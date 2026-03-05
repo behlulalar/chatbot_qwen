@@ -26,7 +26,7 @@ import time
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, SessionLocal
 from app.scraper.qdms_scraper import QDMSScraper
 from app.scraper.link_tracker import LinkTracker
 from app.converter.pdf_processor import PDFProcessor
@@ -97,23 +97,23 @@ class DataPipelineSetup:
         
         try:
             scraper = QDMSScraper(headless=True)
+            print("  → Extracting and downloading PDFs...")
+            results = scraper.scrape_and_download_all()
+            logger.info(f"  Found {len(results)} PDF links")
+            print(f"  ✓ Downloaded {len(results)} PDFs")
             
-            # Extract links
-            print("  → Extracting PDF links...")
-            links = scraper.extract_qdms_links()
-            logger.info(f"  Found {len(links)} PDF links")
-            print(f"  ✓ Found {len(links)} PDF links")
+            db = SessionLocal()
+            try:
+                tracker = LinkTracker(db)
+                tracker.sync_documents(results)
+            finally:
+                db.close()
             
-            # Download PDFs
-            print("  → Downloading PDFs...")
-            tracker = LinkTracker()
-            downloaded = tracker.sync_documents(links)
-            
-            logger.info(f"  ✓ Downloaded {len(downloaded)} PDFs")
-            print(f"  ✓ Downloaded {len(downloaded)} PDFs")
+            logger.info(f"  ✓ Downloaded {len(results)} PDFs")
+            print(f"  ✓ Downloaded {len(results)} PDFs")
             print("✅ Scraping complete\n")
             
-            return len(downloaded)
+            return len(results)
             
         except Exception as e:
             logger.error(f"  ✗ Scraping failed: {e}")
@@ -127,42 +127,39 @@ class DataPipelineSetup:
         
         try:
             processor = PDFProcessor()
-            tracker = LinkTracker()
-            
-            # Get documents to process
-            documents = tracker.get_documents_to_process()
-            logger.info(f"  Found {len(documents)} documents to process")
-            
-            if not documents:
-                print("  ⏭️  No documents to process\n")
-                return 0
-            
-            processed_count = 0
-            failed_count = 0
-            
-            for i, doc in enumerate(documents, 1):
-                try:
-                    print(f"  → Processing ({i}/{len(documents)}): {doc.title[:50]}...")
-                    
-                    pdf_path = Path(settings.download_directory) / doc.filename
-                    json_path = Path(settings.json_directory) / f"{doc.filename.replace('.pdf', '.json')}"
-                    
-                    # Process PDF
-                    result = processor.process_pdf(str(pdf_path), str(json_path))
-                    
-                    if result["success"]:
-                        # Update database
-                        tracker.mark_processed(doc.id, str(json_path))
+            db = SessionLocal()
+            try:
+                tracker = LinkTracker(db)
+                documents = tracker.get_documents_to_process()
+                logger.info(f"  Found {len(documents)} documents to process")
+
+                if not documents:
+                    print("  ⏭️  No documents to process\n")
+                    return 0
+
+                processed_count = 0
+                failed_count = 0
+
+                for i, doc in enumerate(documents, 1):
+                    try:
+                        print(f"  → Processing ({i}/{len(documents)}): {doc.title[:50]}...")
+
+                        pdf_path = Path(doc.pdf_path) if doc.pdf_path else Path(settings.download_directory) / f"{doc.id}.pdf"
+                        json_filename = pdf_path.stem + ".json"
+
+                        result = processor.process_pdf(str(pdf_path), doc.title)
+                        json_path = processor.save_json(result, json_filename)
+                        page_count = result["statistics"]["total_pages"]
+
+                        tracker.mark_as_processed(doc.id, str(json_path), page_count)
                         processed_count += 1
                         logger.info(f"  ✓ {doc.title}")
-                    else:
+                    except Exception as e:
                         failed_count += 1
-                        logger.error(f"  ✗ {doc.title}: {result.get('error')}")
-                        
-                except Exception as e:
-                    failed_count += 1
-                    logger.error(f"  ✗ Error processing {doc.title}: {e}")
-            
+                        logger.error(f"  ✗ Error processing {doc.title}: {e}")
+            finally:
+                db.close()
+
             print(f"  ✓ Processed: {processed_count}")
             print(f"  ✗ Failed: {failed_count}")
             print("✅ PDF processing complete\n")

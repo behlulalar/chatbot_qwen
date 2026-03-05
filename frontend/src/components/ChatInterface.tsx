@@ -12,7 +12,7 @@ import {
   getSession
 } from '../utils/sessionStorage';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim() !== '') ? process.env.REACT_APP_API_URL : (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8000');
 
 interface Message {
   role: 'user' | 'assistant';
@@ -46,6 +46,7 @@ const ChatInterface: React.FC = () => {
   const [totalCost, setTotalCost] = useState(0); // Used in session storage, not displayed in UI
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessionRefreshTrigger, setSessionRefreshTrigger] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -56,12 +57,6 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Reload sessions when sidebar opens
-  useEffect(() => {
-    if (sidebarOpen) {
-      // Trigger sidebar to reload sessions
-    }
-  }, [sidebarOpen, currentSessionId]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -109,7 +104,6 @@ const ChatInterface: React.FC = () => {
       setMessages(finalMessages);
       setTotalCost(prev => prev + response.data.metadata.cost);
 
-      // Save session after each exchange
       const session: ChatSession = {
         id: sessionId,
         title: messages.length === 0 ? generateSessionTitle(inputValue) : (getSession(sessionId)?.title || generateSessionTitle(inputValue)),
@@ -118,6 +112,7 @@ const ChatInterface: React.FC = () => {
         updatedAt: new Date()
       };
       saveSession(session);
+      setSessionRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
       console.error('Error:', error);
@@ -184,6 +179,7 @@ const ChatInterface: React.FC = () => {
         onStartNewChat={startNewChat}
         onLoadSession={loadSession}
         currentSessionId={currentSessionId}
+        sessionRefreshTrigger={sessionRefreshTrigger}
       />
       
       <div className={`main-content ${!sidebarOpen ? 'sidebar-closed' : ''}`}>

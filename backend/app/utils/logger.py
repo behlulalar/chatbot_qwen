@@ -5,10 +5,12 @@ import logging
 import sys
 from pathlib import Path
 from datetime import datetime
-from pythonjsonlogger import jsonlogger
+from typing import Optional
+
+from pythonjsonlogger.json import JsonFormatter
 
 
-def setup_logger(name: str, log_file: str = None, level=logging.DEBUG):
+def setup_logger(name: str, log_file: Optional[str] = None, level: int = logging.DEBUG):
     """
     Setup logger with both console and file handlers.
     
@@ -43,7 +45,7 @@ def setup_logger(name: str, log_file: str = None, level=logging.DEBUG):
         
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(level)
-        json_format = jsonlogger.JsonFormatter(
+        json_format = JsonFormatter(
             '%(asctime)s %(name)s %(levelname)s %(message)s'
         )
         file_handler.setFormatter(json_format)

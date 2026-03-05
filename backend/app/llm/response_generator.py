@@ -4,10 +4,13 @@ Response Generator - Combines RAG retrieval with LLM generation.
 This is the core of the chatbot - it retrieves relevant documents
 and generates responses using OpenAI.
 """
+import re
 from typing import List, Dict, Optional, Tuple
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from app.rag.vector_store import VectorStoreManager
+from app.rag.retrieval import hybrid_retrieve, _build_bm25_index
+from app.rag.text_utils import normalize_turkish
 from app.llm.openai_handler import OpenAIHandler
 from app.llm.prompts import (
     SYSTEM_PROMPT,
@@ -22,44 +25,144 @@ from app.config import settings
 logger = setup_logger("response_generator", "./logs/response_generator.log")
 
 
-def normalize_turkish(text: str) -> str:
+def _remove_qdms_blocks(text: str) -> str:
     """
-    Normalize Turkish text for comparison.
-    
-    Converts Turkish I/İ to ASCII i for consistent matching.
-    CRITICAL: Must replace BEFORE lowercasing to avoid combining characters!
+    QDMS sayfa başlığı/altlığı meta-veri bloklarını metinden temizler.
+    Blok yapısı: [Başlık]\nDoküman No:\nKYS.XXX\n...\nSayfa:\nN / M
     """
-    import unicodedata
-    
-    # STEP 1: Replace Turkish characters BEFORE lowercasing
-    # This prevents "İ" → "i̇" (combining dot) problem
-    turkish_map = {
-        'İ': 'I',  # Turkish capital I with dot → ASCII capital I
-        'ı': 'i',  # Turkish lowercase dotless i → ASCII i
-        'Ğ': 'G',
-        'ğ': 'g',
-        'Ü': 'U',
-        'ü': 'u',
-        'Ş': 'S',
-        'ş': 's',
-        'Ö': 'O',
-        'ö': 'o',
-        'Ç': 'C',
-        'ç': 'c'
-    }
-    
-    result = text
-    for turkish, ascii_char in turkish_map.items():
-        result = result.replace(turkish, ascii_char)
-    
-    # STEP 2: Now safe to lowercase
-    result = result.lower()
-    
-    # STEP 3: Remove any remaining combining diacritics
-    result = unicodedata.normalize('NFD', result)
-    result = ''.join(char for char in result if unicodedata.category(char) != 'Mn')
-    
-    return result
+    lines = text.split('\n')
+    to_remove: set = set()
+
+    for i, line in enumerate(lines):
+        if not re.match(r'\s*Doküman\s+No\s*:', line):
+            continue
+
+        block_start = i
+        for j in range(i - 1, max(-1, i - 5), -1):
+            s = lines[j].strip()
+            if not s:
+                block_start = j
+            elif re.match(r'^[A-ZÇĞİÖŞÜ]', s) and len(s) > 10:
+                block_start = j
+                break
+            else:
+                break
+
+        block_end = i
+        for j in range(i + 1, min(len(lines), i + 15)):
+            block_end = j
+            s = lines[j].strip()
+            if re.match(r'^\d+\s*/\s*\d+$', s):
+                break
+
+        for j in range(block_end + 1, min(len(lines), block_end + 3)):
+            if not lines[j].strip():
+                block_end = j
+            else:
+                break
+
+        for j in range(block_start, block_end + 1):
+            to_remove.add(j)
+
+    if not to_remove:
+        return text
+    return '\n'.join(line for i, line in enumerate(lines) if i not in to_remove)
+
+
+def _clean_embedded_titles(text: str, doc_title: str = "") -> str:
+    """
+    Sayfa geçişlerinde madde ortasına giren doküman başlıklarını temizler.
+    """
+    if not text or not doc_title:
+        return text
+
+    title_upper = re.sub(r'\s+', ' ', doc_title.strip()).upper()
+    title_words = set(title_upper.split())
+
+    cleaned_lines = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append(line)
+            continue
+        if stripped.startswith("MADDE"):
+            cleaned_lines.append(line)
+            continue
+        s_upper = re.sub(r'\s+', ' ', stripped).upper()
+        s_words = set(s_upper.split())
+        if (
+            len(s_words) >= 3
+            and len(s_words) <= len(title_words) + 3
+            and len(s_words & title_words) >= len(title_words) * 0.7
+            and re.match(r'^[A-ZÇĞİÖŞÜ\s,\-–()/]+$', stripped)
+        ):
+            continue
+        cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines)
+
+
+_FIKRA_REF_SUFFIXES = r'(?:inci|[ıi]nc[iı]|üncü|nci|uncu|ıncı)'
+_TR_NUM_WORDS = (
+    r'(?:bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|'
+    r'yirmi|otuz|kırk|elli|altmış|yetmiş|seksen|doksan|yüz|sıfır)'
+)
+_BENT_INDENT = "\u00A0" * 6
+
+
+def _format_article_text(text: str, doc_title: str = "") -> str:
+    """
+    Madde içeriğini temiz ve düzenli formata dönüştür.
+
+    Pipeline:
+      1. QDMS meta-veri bloklarını sil
+      2. Gömülü doküman başlıklarını sil
+      3. Tüm satır kırıklarını birleştir (PDF line-wrap → düz metin)
+      4. Fıkra numaralarını (N) → N. formatına çevir + yeni satır
+      5. Bent işaretlerini (a, b, ç...) girintili ayrı satıra al
+      6. İlk fıkra numarası yoksa ekle
+      7. Son temizlik
+    """
+    if not text or not text.strip():
+        return text
+
+    out = _remove_qdms_blocks(text)
+    out = _clean_embedded_titles(out, doc_title)
+
+    out = re.sub(r'\s*\n+\s*', ' ', out)
+    out = re.sub(r' {2,}', ' ', out)
+
+    _lq = '\u2039'
+    _rq = '\u203a'
+    out = re.sub(
+        r'(' + _TR_NUM_WORDS + r'\s+)\((\d+)\)',
+        f'\\1{_lq}\\2{_rq}', out, flags=re.IGNORECASE
+    )
+
+    out = re.sub(
+        r'\s*\((\d+)\)(?!\s*' + _FIKRA_REF_SUFFIXES + r')',
+        r'\n\1. ', out
+    )
+
+    out = out.replace(_lq, '(').replace(_rq, ')')
+
+    out = re.sub(
+        r'(?<=\s)([a-zçğıöşü])\)\s(?!bendi|bent)',
+        f'\n{_BENT_INDENT}\\1) ', out
+    )
+    out = re.sub(
+        r'^([a-zçğıöşü])\)\s(?!bendi|bent)',
+        f'{_BENT_INDENT}\\1) ', out
+    )
+
+    stripped = out.strip()
+    if re.search(r'\n\s*2\.\s', stripped) and not re.match(r'^1\.', stripped):
+        out = '1. ' + out.strip()
+
+    out = re.sub(r'\n{2,}', '\n', out)
+    out = re.sub(r'^\s+$', '', out, flags=re.MULTILINE)
+
+    return re.sub(r'^\n+', '', out).rstrip()
 
 
 class ResponseGenerator:
@@ -80,10 +183,10 @@ class ResponseGenerator:
     
     def __init__(
         self,
-        vector_store_manager: VectorStoreManager = None,
-        openai_handler: OpenAIHandler = None,
-        retrieval_k: int = 5,
-        max_distance_threshold: float = 1.0,
+        vector_store_manager: Optional[VectorStoreManager] = None,
+        openai_handler: Optional[OpenAIHandler] = None,
+        retrieval_k: int = 7,
+        max_distance_threshold: float = 1.5,
         enable_cache: bool = True
     ):
         """
@@ -110,7 +213,11 @@ class ResponseGenerator:
         
         # Initialize vector store
         self.vector_store.create_or_load()
-        
+        try:
+            _build_bm25_index(self.vector_store)
+        except Exception as e:
+            logger.warning(f"BM25 index build failed at init: {e}")
+
         cache_status = "enabled" if enable_cache else "disabled"
         logger.info(f"ResponseGenerator initialized: k={retrieval_k}, max_distance={max_distance_threshold}, cache={cache_status}")
     
@@ -149,239 +256,467 @@ class ResponseGenerator:
             logger.info("Returning meta response (about chatbot)")
             return meta_response
         
-        # Step 1: Retrieve relevant documents
-        retrieved_docs = self._retrieve_documents(question)
-        
+        retrieval_query = self._build_retrieval_query(question, conversation_history)
+
+        import time
+        start_time = time.time()
+
+        retrieved_docs, llm_answer = self._retrieve_documents(retrieval_query)
+
         if not retrieved_docs:
             logger.warning("No relevant documents found")
             return self._no_context_response(question)
-        
-        # Step 2: Format context
-        context = self._format_context(retrieved_docs)
-        
-        # Step 3: Create prompt
-        user_prompt = USER_PROMPT_TEMPLATE.format(
-            question=question,
-            context=context
-        )
-        
-        # Step 4: Call LLM
-        messages = self.llm.format_messages(
-            system_prompt=SYSTEM_PROMPT,
-            user_message=user_prompt,
-            conversation_history=conversation_history
-        )
-        
-        llm_response = self.llm.chat_completion(messages)
-        
-        # Step 5: Format response
+
+        answer_text = self._build_combined_answer(retrieved_docs, llm_answer)
+
+        response_time = time.time() - start_time
         response = {
-            "answer": llm_response["content"],
+            "answer": answer_text,
             "sources": self._format_sources(retrieved_docs) if include_sources else [],
             "metadata": {
                 "retrieved_docs": len(retrieved_docs),
-                "tokens": llm_response["total_tokens"],
-                "cost": llm_response["cost"],
-                "response_time": llm_response["response_time"],
-                "model": llm_response["model"]
+                "tokens": 0,
+                "cost": 0.0,
+                "response_time": response_time,
+                "model": self.llm.model
             }
         }
-        
-        logger.info(f"Response generated: {llm_response['total_tokens']} tokens, ${llm_response['cost']:.4f}")
-        
-        # Step 6: Cache response (only for standalone questions without history)
+
+        logger.info(f"Direct response: {len(retrieved_docs)} docs, {response_time:.2f}s")
+
         if self.enable_cache and self.cache and not conversation_history:
             cache_key = self.cache._generate_key("response", question.lower().strip())
             self.cache.set(cache_key, response, ttl=self.response_cache_ttl)
-            logger.debug(f"Cached response for: '{question[:50]}...'")
-        
+
         return response
     
-    def _retrieve_documents(self, question: str) -> List[Tuple[Document, float]]:
+    @staticmethod
+    def _build_retrieval_query(
+        question: str,
+        conversation_history: Optional[List[Dict]] = None,
+    ) -> str:
         """
-        Retrieve relevant documents from vector store.
-        
-        Args:
-            question: User's question
-        
-        Returns:
-            List of (Document, score) tuples
+        Build retrieval query. Each question is treated independently.
+        Only enrich with previous context for very clear follow-up phrases.
+        """
+        if not conversation_history:
+            return question
+
+        q = question.strip().lower()
+        is_followup = (
+            q.startswith("peki")
+            or q.startswith("ya ")
+            or q.startswith("aynı şekilde")
+            or q in ("bu konuda", "bununla ilgili", "devamı", "detay ver")
+        )
+
+        if not is_followup:
+            return question
+
+        prev_user_msgs = [
+            m["content"] for m in conversation_history if m.get("role") == "user"
+        ]
+        if not prev_user_msgs:
+            return question
+
+        last_user = prev_user_msgs[-1]
+        combined = f"{last_user} {question}"
+        logger.debug(f"Retrieval query enriched: '{combined[:80]}'")
+        return combined
+
+    _LLM_JUDGE_SYSTEM = (
+        "Sen SUBU Mevzuat Asistanı'sın. Kullanıcı bir soru soruyor ve arama sistemi "
+        "aday maddeler buluyor. Görevin:\n"
+        "1. Her maddenin soruyla ALAKALI mı ALAKASIZ mı olduğunu belirle\n"
+        "2. Alakalı maddelere dayanarak soruyu kısa ve net cevapla (2-4 cümle)\n\n"
+        "FORMAT (bu formatı kesinlikle takip et):\n"
+        "ALAKALI: 1, 3\n"
+        "ALAKASIZ: 2\n"
+        "CEVAP: [Sorunun kısa ve net cevabı, alakalı maddelere dayanarak]\n\n"
+        "KURALLAR:\n"
+        "- Hiçbir madde alakalı değilse: ALAKALI: YOK yazıp CEVAP satırını yazma\n"
+        "- Cevabı sadece verilen kaynaklara dayandır, bilgi uydurma\n"
+        "- Cevap kısa olsun, detaylar zaten tam metin olarak eklenecek"
+    )
+
+    def _llm_judge(
+        self,
+        question: str,
+        results: List[Tuple[Document, float]],
+    ) -> Tuple[List[Tuple[Document, float]], str]:
+        """
+        LLM tek çağrıda hem alakalılık filtresi hem kısa cevap üretir.
+        Returns: (filtered_results, llm_answer)
+        llm_answer boş olabilir (hiç alakalı yoksa veya hata durumunda).
+        """
+        if not results:
+            return [], ""
+
+        items = []
+        for i, (doc, _score) in enumerate(results, 1):
+            meta = doc.metadata
+            title = meta.get("title", "")[:60]
+            article_num = meta.get("article_number", "?")
+            article_title = meta.get("article_title", "")
+            preview = doc.page_content[:300].replace("\n", " ")
+            items.append(
+                f"{i}. [{title} - Madde {article_num} ({article_title})]\n{preview}"
+            )
+
+        user_prompt = (
+            f'Soru: "{question}"\n\n'
+            f"Bulunan maddeler:\n\n" + "\n\n".join(items) + "\n\n"
+            f"Yukarıdaki formata göre cevapla:"
+        )
+
+        try:
+            messages = [
+                {"role": "system", "content": self._LLM_JUDGE_SYSTEM},
+                {"role": "user", "content": user_prompt},
+            ]
+            response = self.llm.chat_completion(
+                messages=messages,
+                temperature=0.1,
+                max_tokens=300,
+            )
+            raw_text = response.get("content", "")
+            llm_time = response.get("response_time", 0)
+            logger.info(
+                f"LLM judge: {llm_time:.1f}s, "
+                f"tokens={response.get('total_tokens', 0)}, "
+                f"response='{raw_text.strip()[:150]}'"
+            )
+
+            relevant_indices: list[int] = []
+            llm_answer = ""
+
+            for line in raw_text.strip().split("\n"):
+                line = line.strip()
+                if line.upper().startswith("ALAKALI:"):
+                    content = line.split(":", 1)[1].strip()
+                    if "YOK" in content.upper():
+                        relevant_indices = []
+                        break
+                    for part in re.split(r'[,\s]+', content):
+                        digits = "".join(c for c in part if c.isdigit())
+                        if digits:
+                            relevant_indices.append(int(digits))
+                elif line.upper().startswith("CEVAP:"):
+                    llm_answer = line.split(":", 1)[1].strip()
+                elif llm_answer and not line.upper().startswith("ALAKASIZ"):
+                    llm_answer += " " + line
+
+            filtered = [
+                results[idx - 1]
+                for idx in relevant_indices
+                if 1 <= idx <= len(results)
+            ]
+
+            kept_info = [
+                f"Md{d.metadata.get('article_number', '?')}"
+                for d, _ in filtered
+            ]
+            logger.info(
+                f"LLM judge result: {len(results)} → {len(filtered)} "
+                f"(kept={kept_info}, answer_len={len(llm_answer)})"
+            )
+
+            return filtered, llm_answer
+
+        except Exception as e:
+            logger.warning(f"LLM judge failed ({e}), keeping all results")
+            return results, ""
+
+    def _retrieve_documents(self, question: str) -> Tuple[List[Tuple[Document, float]], str]:
+        """
+        Returns: (filtered_docs, llm_answer)
+        Pipeline: retrieval → score cutoff → context filter → LLM judge
         """
         logger.debug(f"Retrieving documents for: '{question}'")
-        
-        # Enhance query for better retrieval
-        enhanced_query = self._enhance_query(question)
-        
-        # Search with scores
-        results = self.vector_store.search_with_score(
-            query=enhanced_query,
-            k=self.retrieval_k * 2  # Get more, then filter aggressively
+
+        results = hybrid_retrieve(
+            query=question,
+            retrieval_k=self.retrieval_k,
+            vector_store_manager=self.vector_store
         )
-        
-        # Filter by distance threshold
-        # ChromaDB returns distance scores: lower = more similar
-        # Typically good matches are < 0.8, excellent < 0.6
-        filtered_results = [
-            (doc, score) for doc, score in results
-            if score <= self.max_distance_threshold
-        ]
-        
-        # AGGRESSIVE FILTER: Check document relevance to query
-        # Filter out documents with wrong context (e.g., "lisansüstü" when asking about "lisans")
-        final_results = self._filter_by_context(question, filtered_results)
-        
-        logger.debug(f"Retrieved {len(final_results)} documents (filtered from {len(results)} → {len(filtered_results)} → {len(final_results)})")
-        
-        return final_results[:self.retrieval_k]  # Return only top k
-    
-    def _enhance_query(self, question: str) -> str:
+        for i, (doc, score) in enumerate(results[:7]):
+            logger.debug(
+                f"  RAW [{i+1}] score={score:.4f} | "
+                f"{doc.metadata.get('title','')[:40]} | "
+                f"Madde {doc.metadata.get('article_number','?')} - "
+                f"{doc.metadata.get('article_title','')[:30]}"
+            )
+
+        filtered_results = self._apply_score_cutoff(results)
+
+        context_results = self._filter_by_context(question, filtered_results)
+
+        if not context_results:
+            logger.info("No results after pre-filters")
+            return [], ""
+
+        final_results, llm_answer = self._llm_judge(question, context_results)
+
+        logger.info(
+            f"Retrieval pipeline: raw={len(results)} → score={len(filtered_results)} "
+            f"→ context={len(context_results)} → llm={len(final_results)}"
+        )
+
+        return final_results[:self.retrieval_k], llm_answer
+
+    @staticmethod
+    def _apply_score_cutoff(
+        results: List[Tuple[Document, float]],
+        max_threshold: float = 0.55,
+        adaptive_margin: float = 0.40,
+        gap_threshold: float = 0.25,
+    ) -> List[Tuple[Document, float]]:
         """
-        Enhance query for better semantic search.
-        
-        Adds context and distinguishes similar terms like "lisans" vs "lisansüstü".
-        
-        Args:
-            question: Original question
-        
-        Returns:
-            Enhanced query
+        Ön eleme filtresi — geniş tutar, asıl hassas filtrelemeyi LLM yapar.
+        1. Mutlak üst sınır (max_threshold)
+        2. En iyi skora göre adaptif sınır (best + adaptive_margin)
+        3. Ardışık skorlar arası büyük boşluk tespiti (gap) — sadece kötü skorlarda
         """
-        question_lower = normalize_turkish(question)
-        
-        # Distinguish "lisans" from "lisansüstü"
-        # Note: After normalize, "lisansüstü" → "lisansustu", "yüksek" → "yuksek"
-        if "lisansustu" in question_lower or "yuksek lisans" in question_lower or "master" in question_lower or "doktora" in question_lower:
-            # Graduate level query
-            enhanced = question + " lisansüstü yüksek lisans master doktora"
-        elif "lisans" in question_lower and "lisansustu" not in question_lower:
-            # Undergraduate level query - explicitly exclude graduate
-            enhanced = question + " lisans ön lisans undergraduate bachelor -lisansüstü"
-        else:
-            enhanced = question
-        
-        # Add context for common terms with more specificity
-        # HARF NOTLARI - Grade letters (AA, BA, BB, CB, CC, DC, DD, FD, FF)
-        # Note: "notu" → "notu", "not" stays as "not"
-        if any(grade in question_lower for grade in ["aa", "ba", "bb", "cb", "cc", "dc", "dd", "fd", "ff"]) and "not" in question_lower:
-            # Asking about specific grade letter (e.g., "BB notu ne", "AA kaç puan")
-            enhanced += " harf notları başarı notları tablosu puan karşılıkları bağıl değerlendirme not sistemi katsayı"
-        elif "harf not" in question_lower or "basari not" in question_lower or "not sistemi" in question_lower:
-            # Asking about grading system
-            enhanced += " harf notları başarı notları tablosu puan karşılıkları bağıl değerlendirme AA BA BB CB CC DC DD FD FF katsayı"
-        elif "yaz okulu" in question_lower or "yaz ogreti" in question_lower:
-            # Summer school - explicitly exclude dress code and other unrelated topics
-            enhanced += " yaz okulu yaz öğretimi dönem ders -kıyafet -giyim"
-        elif "mezuniyet" in question_lower or "mezun" in question_lower:
-            # Distinguish between graduation requirements vs diploma procedures
-            # Note: After normalize, "şart" → "sart", "koşul" → "kosul", "nasıl" → "nasil"
-            if "sart" in question_lower or "kosul" in question_lower or "nasil" in question_lower or "gerek" in question_lower:
-                # User asking about requirements/conditions - NOT just diploma types
-                enhanced += " mezuniyet şartları koşulları eğitim öğretim tamamlama ders kredi başarı -diploma düzenleme"
-            else:
-                enhanced += " mezuniyet şartları diploma"
-        elif "basvuru" in question_lower:
-            enhanced += " başvuru kabul kayıt"
-        
-        logger.debug(f"Enhanced query: '{enhanced}'")
-        return enhanced
+        if not results:
+            return []
+
+        best_score = results[0][1]
+        adaptive_limit = best_score + adaptive_margin
+
+        gap_cut = len(results)
+        for i in range(1, len(results)):
+            gap = results[i][1] - results[i - 1][1]
+            if gap > gap_threshold and results[i][1] > 0.40:
+                gap_cut = i
+                logger.debug(
+                    f"Gap detected at position {i}: "
+                    f"score[{i-1}]={results[i-1][1]:.4f} → score[{i}]={results[i][1]:.4f} "
+                    f"(gap={gap:.4f})"
+                )
+                break
+
+        effective_threshold = min(max_threshold, adaptive_limit)
+
+        filtered = []
+        for i, (doc, score) in enumerate(results):
+            if i >= gap_cut:
+                break
+            if score > effective_threshold:
+                break
+            filtered.append((doc, score))
+
+        if not filtered and results:
+            filtered = [results[0]]
+
+        if len(filtered) != len(results):
+            kept_info = " | ".join(
+                f"Md{d.metadata.get('article_number','?')}={s:.4f}"
+                for d, s in filtered
+            )
+            dropped_info = " | ".join(
+                f"Md{d.metadata.get('article_number','?')}={s:.4f}"
+                for d, s in results[len(filtered):]
+            )
+            logger.info(
+                f"Score cutoff: {len(results)} → {len(filtered)} "
+                f"(threshold={effective_threshold:.3f}, gap_cut@{gap_cut}) "
+                f"KEPT=[{kept_info}] DROPPED=[{dropped_info}]"
+            )
+
+        return filtered
     
     def _filter_by_context(self, question: str, results: List[Tuple[Document, float]]) -> List[Tuple[Document, float]]:
         """
         Filter documents based on context match with question.
-        
-        Prevents mixing up "lisans" with "lisansüstü" and similar confusions.
-        
-        Args:
-            question: User's question
-            results: Retrieved documents
-        
-        Returns:
-            Filtered documents
+        Uses pre-computed normalized metadata from document_loader when available.
         """
-        question_lower = normalize_turkish(question)
+        q = normalize_turkish(question)
         filtered = []
-        
-        # DEBUG: Log all retrieved documents
+
         logger.debug(f"Documents before context filter: {len(results)}")
-        for i, (doc, score) in enumerate(results):
-            doc_title = doc.metadata.get('title', 'Unknown')[:50]
-            logger.debug(f"  [{i+1}] score={score:.3f} | {doc_title}")
-        
+
         for doc, score in results:
-            title_raw = doc.metadata.get('title', '')
-            title = normalize_turkish(title_raw)
-            content = normalize_turkish(doc.page_content)
-            
-            # Check for context mismatch
+            title = doc.metadata.get('title_normalized') or normalize_turkish(doc.metadata.get('title', ''))
             should_include = True
-            
-            # Rule 0a: CRITICAL - Exclude irrelevant topic documents
-            # Exclude "kıyafet" (dress code) documents when asking about unrelated topics
-            # Note: After normalize, "kıyafet" → "kiyafet"
-            if "kiyafet" in title or "kiyafet" in content[:100]:
-                # Only include if explicitly asking about dress code
-                if "kiyafet" not in question_lower and "uniform" not in question_lower and "giyim" not in question_lower:
-                    logger.debug(f"Excluding dress code document for unrelated query: {title[:50]}")
+
+            if "kiyafet" in title:
+                if "kiyafet" not in q and "uniform" not in q and "giyim" not in q:
                     should_include = False
-            
-            # Rule 0b: CRITICAL - Exclude "yurt dışı" (international student) documents for domestic student questions
-            # Note: After normalize, "ş" → "s", "ı" → "i", "ü" → "u"
-            # "yurt dışı" → "yurt disi", "yabancı" → "yabanci", "uluslararası" → "uluslararasi"
-            if "yurt disi" in title or "yurt disindan" in title or "uluslararasi" in title:
-                if "yurt disi" not in question_lower and "yabanci" not in question_lower and "international" not in question_lower:
-                    logger.debug(f"Excluding yurt dışı document for domestic query: {title[:50]}")
+
+            if should_include and ("yurt disi" in title or "yurt disindan" in title or "uluslararasi" in title):
+                if "yurt disi" not in q and "yabanci" not in q and "international" not in q and "degisim" not in q:
                     should_include = False
-            
-            # Rule 1: If asking about "lisans" (not "lisansüstü"), exclude "lisansüstü" documents
-            # Note: After normalize_turkish(), "ü" becomes "u", "ş" becomes "s"
-            # "lisansüstü" → "lisansustu", "yüksek" → "yuksek"
-            if "lisans" in question_lower and "lisansustu" not in question_lower and "yuksek lisans" not in question_lower:
+
+            if should_include and "lisans" in q and "lisansustu" not in q and "yuksek lisans" not in q:
                 if "lisansustu" in title or "yuksek lisans" in title or "master" in title or "doktora" in title:
-                    logger.debug(f"Excluding lisansüstü document: {title[:50]}")
                     should_include = False
-                elif "lisansustu" in content[:200]:  # Check beginning of content
-                    logger.debug(f"Excluding lisansüstü content: {title[:50]}")
+
+            if should_include and ("lisansustu" in q or "yuksek lisans" in q or "doktora" in q):
+                if "lisans" in title and "lisansustu" not in title and "yuksek lisans" not in title:
                     should_include = False
-            
-            # Rule 2: If asking about "lisansüstü", only include graduate-level documents
-            if "lisansustu" in question_lower or "yuksek lisans" in question_lower or "doktora" in question_lower:
-                if "lisansustu" not in title and "yuksek lisans" not in title and "lisansustu" not in content[:200]:
-                    # This might be undergraduate content
-                    if "lisans" in title and "lisansustu" not in title:
-                        logger.debug(f"Excluding lisans document for lisansüstü query: {title[:50]}")
+
+            if should_include and ("mezuniyet" in q or "mezun" in q):
+                if "sart" in q or "kosul" in q or "nasil" in q or "gerek" in q:
+                    if "diploma" in title and ("duzenleme" in title or "duzenlen" in title):
                         should_include = False
-            
-            # Rule 3: If asking about "mezuniyet ŞARTLARI/KOŞULLARI", exclude diploma procedure documents
-            if "mezuniyet" in question_lower or "mezun" in question_lower:
-                # If asking about graduation REQUIREMENTS/CONDITIONS (not just diploma)
-                # Note: After normalize_turkish(), "şart" becomes "sart", "koşul" becomes "kosul"
-                if "sart" in question_lower or "kosul" in question_lower or "nasil" in question_lower or "gerek" in question_lower:
-                    logger.debug(f"Checking diploma filter for: {title[:60]}")
-                    has_diploma = "diploma" in title
-                    # Note: After normalize, "düzenleme" → "duzenleme", "düzenlen" → "duzenlen"
-                    has_duzenlen = ("duzenleme" in title or "duzenlen" in title)
-                    logger.debug(f"  has_diploma={has_diploma}, has_duzenlen={has_duzenlen}")
-                    if has_diploma and has_duzenlen:
-                        logger.debug(f"Excluding diploma procedure document for graduation requirements query: {title[:50]}")
-                        should_include = False
-                # Exclude başvuru/kabul focused documents
-                # Note: After normalize, "başvuru" → "basvuru"
-                if ("basvuru" in title or "kabul" in title) and "mezuniyet" not in title and "mezun" not in title:
-                    logger.debug(f"Excluding başvuru/kabul document for mezuniyet query: {title[:50]}")
+                if ("basvuru" in title or "kabul" in title) and "mezuniyet" not in title:
                     should_include = False
-            
-            # Rule 4: If asking about "başvuru", exclude pure "mezuniyet" documents
-            if "basvuru" in question_lower and "mezuniyet" not in question_lower:
+
+            if should_include and "basvuru" in q and "mezuniyet" not in q:
                 if "mezuniyet" in title and "basvuru" not in title:
-                    logger.debug(f"Excluding mezuniyet document for başvuru query: {title[:50]}")
                     should_include = False
-            
+
             if should_include:
                 filtered.append((doc, score))
-        
+            else:
+                logger.debug(f"Filtered out: {doc.metadata.get('title','')[:40]} Md {doc.metadata.get('article_number','')}")
+
         logger.debug(f"Context filter: {len(results)} → {len(filtered)} documents")
         return filtered
+
+    @staticmethod
+    def _filter_by_title_relevance(
+        question: str,
+        results: List[Tuple[Document, float]],
+    ) -> List[Tuple[Document, float]]:
+        """
+        Soru ile madde başlığı arasındaki keyword örtüşmesini kontrol eder.
+        En iyi eşleşmeye göre belirgin şekilde düşük olan sonuçları filtreler.
+        """
+        if len(results) <= 1:
+            return results
+
+        q_norm = normalize_turkish(question)
+        stop = {
+            "nedir", "neler", "nasil", "bilgi", "verir", "misin", "musun",
+            "istiyorum", "hakkinda", "olan", "icin", "ile", "gibi", "kadar",
+            "bana", "bir", "ben", "seni", "size", "sorusu", "vermek",
+        }
+        q_words = [w for w in q_norm.split() if len(w) > 2 and w not in stop]
+
+        if not q_words:
+            return results
+
+        def _title_match(doc) -> float:
+            at = normalize_turkish(doc.metadata.get("article_title", "") or "")
+            t_words = at.split()
+            if not t_words:
+                return 0.0
+            matches = 0
+            for qw in q_words:
+                for tw in t_words:
+                    if len(qw) >= 4 and len(tw) >= 4:
+                        if qw[:4] == tw[:4]:
+                            matches += 1
+                            break
+                    elif qw == tw:
+                        matches += 1
+                        break
+            return matches / len(q_words)
+
+        scored = [(doc, score, _title_match(doc)) for doc, score in results]
+        best_tm = max(s[2] for s in scored)
+
+        if best_tm < 0.4:
+            return results
+
+        filtered = []
+        for doc, score, tm in scored:
+            if tm >= best_tm * 0.6:
+                filtered.append((doc, score))
+            else:
+                logger.info(
+                    f"Title relevance filter: dropped Md{doc.metadata.get('article_number', '?')} "
+                    f"'{doc.metadata.get('article_title', '')}' "
+                    f"(match={tm:.2f}, best={best_tm:.2f})"
+                )
+
+        if not filtered:
+            filtered = [results[0]]
+
+        return filtered
     
+    @staticmethod
+    def _build_combined_answer(
+        retrieved_docs: List[Tuple[Document, float]],
+        llm_answer: str = "",
+    ) -> str:
+        """
+        Combine LLM's brief answer with full source text.
+        Structure: LLM summary → separator → full article text → citation
+        """
+        source_parts = []
+        citations = []
+
+        for doc, score in retrieved_docs:
+            meta = doc.metadata
+            title = meta.get('title', '')
+            article_num = meta.get('article_number', '')
+
+            content = doc.page_content.strip()
+
+            if content.startswith("MADDE"):
+                first_line_end = content.find("\n")
+                if first_line_end > 0:
+                    header_line = content[:first_line_end].strip()
+                    body = _format_article_text(
+                        content[first_line_end:].strip(), doc_title=title
+                    )
+                    source_parts.append(f"**{header_line}**\n\n{body}")
+                else:
+                    source_parts.append(f"**{content}**")
+            else:
+                article_title = meta.get('article_title', '')
+                header = f"**MADDE {article_num}**"
+                if article_title:
+                    header += f" - {article_title}"
+                body = _format_article_text(content, doc_title=title)
+                source_parts.append(f"{header}\n\n{body}")
+
+            citations.append(f"{title}, Madde {article_num}")
+
+        source_text = "\n\n---\n\n".join(source_parts)
+        citation_line = "**Kaynak:** " + " | ".join(citations)
+
+        if llm_answer:
+            return (
+                f"{llm_answer}\n\n"
+                f"---\n\n"
+                f"**İlgili Mevzuat:**\n\n"
+                f"{source_text}\n\n"
+                f"{citation_line}"
+            )
+
+        return f"{source_text}\n\n{citation_line}"
+
+    @staticmethod
+    def _build_source_appendix(retrieved_docs: List[Tuple[Document, float]]) -> str:
+        """
+        Build programmatic appendix with full source text.
+        Guarantees the user sees complete, unmodified article text
+        regardless of LLM behavior.
+        """
+        parts = []
+        citations = []
+
+        for doc, score in retrieved_docs:
+            meta = doc.metadata
+            title = meta.get('title', 'Bilinmeyen Kaynak')
+            article_num = meta.get('article_number', '')
+            article_title = meta.get('article_title', '')
+
+            header = f"**MADDE {article_num}**"
+            if article_title:
+                header += f" - {article_title}"
+
+            parts.append(f"{header}\n\n{doc.page_content}")
+            citations.append(f"{title}, Madde {article_num}")
+
+        source_text = "\n\n---\n\n".join(parts)
+        citation_line = "\n\n**Kaynak:** " + " | ".join(citations)
+
+        return source_text + citation_line
+
     def _format_context(self, retrieved_docs: List[Tuple[Document, float]]) -> str:
         """
         Format retrieved documents as context for LLM.
@@ -485,11 +820,11 @@ Sorunuzu sorun, size yardımcı olayım! 😊"""
 **Kimim?**
 - İsim: SUBU Mevzuat Asistanı
 - Görev: Üniversite mevzuatları hakkında bilgi vermek
-- Teknoloji: OpenAI GPT tabanlı RAG (Retrieval-Augmented Generation) sistemi
+- Teknoloji: Yapay zeka tabanlı RAG (Retrieval-Augmented Generation) sistemi
 
 **Nasıl Çalışırım?**
 1. Sorunuzu alıyorum
-2. 77 üniversite yönergesini tarayıp en ilgili bölümleri buluyorum
+2. Üniversite yönergelerini tarayıp en ilgili bölümleri buluyorum
 3. Sadece resmi mevzuatlara dayanarak cevap veriyorum
 4. Her cevabımda kaynak ve madde numarasını belirtiyorum
 
@@ -520,68 +855,41 @@ Size nasıl yardımcı olabilirim? 😊"""
         return None
     
     def _no_context_response(self, question: str) -> Dict:
-        """
-        Generate response when no relevant documents found.
-        
-        Args:
-            question: User's question
-        
-        Returns:
-            Response dictionary
-        """
-        messages = self.llm.format_messages(
-            system_prompt=SYSTEM_PROMPT,
-            user_message=NO_CONTEXT_PROMPT.format(question=question)
-        )
-        
-        llm_response = self.llm.chat_completion(messages)
-        
+        """Return a template response when no relevant documents found (no LLM call)."""
         return {
-            "answer": llm_response["content"],
+            "answer": NO_CONTEXT_PROMPT.format(question=question),
             "sources": [],
             "metadata": {
                 "retrieved_docs": 0,
-                "tokens": llm_response["total_tokens"],
-                "cost": llm_response["cost"],
-                "response_time": llm_response["response_time"],
-                "model": llm_response["model"],
+                "tokens": 0,
+                "cost": 0.0,
+                "response_time": 0.0,
+                "model": "template",
                 "no_context": True
             }
         }
     
     def generate_response_stream(self, question: str):
         """
-        Generate streaming response (for real-time UI).
-        
-        Args:
-            question: User's question
-        
-        Yields:
-            Response chunks
+        Generate streaming response for real-time UI.
+        Uses LLM for relevance + brief answer, then appends full source text.
         """
         logger.info(f"Generating streaming response for: '{question}'")
-        
-        # Retrieve documents
-        retrieved_docs = self._retrieve_documents(question)
-        
+
+        retrieved_docs, llm_answer = self._retrieve_documents(question)
+
         if not retrieved_docs:
-            yield "Üzgünüm, bu soruyla ilgili mevzuatlarda bilgi bulamadım."
+            yield (
+                "Bu soruyla ilgili üniversite mevzuatlarında bilgi bulamadım.\n\n"
+                "Ben **SUBU Mevzuat Asistanı**'yım ve sadece Sakarya Uygulamalı Bilimler "
+                "Üniversitesi'nin yönetmelik, yönerge ve prosedürleri hakkında bilgi verebilirim.\n\n"
+                "**Örnek sorular:**\n"
+                "- \"Tek ders sınavı hakkında bilgi verir misin?\"\n"
+                "- \"Üniversiteden ayrılma prosedürü nedir?\"\n"
+                "- \"Devamsızlık sınırı ne kadar?\"\n"
+                "- \"Staj yönergesi hakkında bilgi ver\""
+            )
             return
-        
-        # Format context
-        context = self._format_context(retrieved_docs)
-        
-        # Create prompt
-        user_prompt = USER_PROMPT_TEMPLATE.format(
-            question=question,
-            context=context
-        )
-        
-        # Stream response
-        messages = self.llm.format_messages(
-            system_prompt=SYSTEM_PROMPT,
-            user_message=user_prompt
-        )
-        
-        for chunk in self.llm.chat_completion_stream(messages):
-            yield chunk
+
+        answer = self._build_combined_answer(retrieved_docs, llm_answer)
+        yield answer

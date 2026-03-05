@@ -44,7 +44,7 @@ npm run build
 
 ## Seçenek 2: SCP ile Dosya Kopyalama
 
-Git kullanmıyorsanız Mac'teki proje klasöründen aşağıdaki komutlarla dosyaları sunucuya atabilirsiniz. `subu_chatbot_v2` ve sunucu IP'sini (`45.141.150.48`) kendi yolunuza göre değiştirin.
+git Git kullanmıyorsanız Mac'teki proje klasöründen aşağıdaki komutlarla dosyaları sunucuya atabilirsiniz. `subu_chatbot_v2` ve sunucu IP'sini (`45.141.150.48`) kendi yolunuza göre değiştirin.
 
 ### Mac'te – Backend dosyalarını atma
 ```bash
@@ -109,6 +109,70 @@ ls -la /opt/local_chatbot_subu/frontend/build/static/js/*.js | head -1
 
 ---
 
+## Sık karşılaşılan sorunlar
+
+### "sudo: unable to resolve host ..." uyarısı
+
+Sunucu hostname'i DNS'te çözülemiyorsa sudo bu uyarıyı verir. Düzeltmek için:
+
+```bash
+# Mevcut hostname
+hostname
+
+# /etc/hosts'a ekle (hostname çıktısını kullanın)
+echo "127.0.0.1 $(hostname)" | sudo tee -a /etc/hosts
+```
+
+Örnek: hostname `45-141-150-48.oyunlayici.com` ise:
+```bash
+echo "127.0.0.1 45-141-150-48.oyunlayici.com" | sudo tee -a /etc/hosts
+```
+
+### Backend doğru (debug'da 78 döküman) ama arayüzde 0 görünüyor
+
+Siteye **http://45.141.150.48/** ile giriyorsanız, frontend'in API istekleri **http://45.141.150.48:8000** adresine gitmeli. Build sırasında bu adres verilmezse tarayıcı `localhost:8000`'e istek atar ve sunucudaki API'ye ulaşmaz.
+
+**Sunucuda** (SSH ile bağlanıp) şunu çalıştırın:
+
+```bash
+cd /opt/local_chatbot_subu/frontend
+REACT_APP_API_URL=http://45.141.150.48:8000 npm run build
+```
+
+Ardından Nginx'in bu build'i sunuyor olması gerekir (genelde `frontend/build` içeriği `/usr/share/nginx/html` veya benzeri bir yere kopyalanır). Build çıktısı zaten `/opt/local_chatbot_subu/frontend/build` altındaysa, Nginx root'u bu klasöre işaret ediyor olabilir; güncel build ile sayfayı **Ctrl+Shift+R** (hard refresh) ile yenileyin.
+
+- Port **8000** sunucuda dışarıya açık olmalı (güvenlik duvarı). Açık değilse Nginx ile `/api`'yi backend'e proxy'leyip `REACT_APP_API_URL=http://45.141.150.48` ile build etmek gerekir.
+
+### Build doğru ama hâlâ "0 doküman yüklü" (CORS veya port)
+
+Frontend **http://45.141.150.48** üzerinden açıldığı için API'ye istek atarken **Origin: http://45.141.150.48** gider. Backend bu origin'i kabul etmezse tarayıcı yanıtı gizler ve sayı 0 görünür.
+
+**1) Sunucuda backend `.env` dosyasında CORS'a frontend adresini ekleyin:**
+
+```bash
+# Backend .env (sunucuda: /opt/local_chatbot_subu/backend/.env)
+# CORS_ORIGINS satırını şu şekilde yapın (virgülle ayırın):
+CORS_ORIGINS=http://localhost:3000,http://localhost:80,http://45.141.150.48,http://45.141.150.48:80
+```
+
+**2) Backend'i yeniden başlatın:**
+
+```bash
+sudo systemctl restart subu-backend
+```
+
+**3) Port 8000'in dışarıya açık olduğundan emin olun (sunucuda):**
+
+```bash
+sudo ufw allow 8000
+sudo ufw status
+# veya ufw kullanmıyorsanız iptables / firewall ayarınızı kontrol edin
+```
+
+**4) Tarayıcıda kontrol:** http://45.141.150.48 açıkken **F12 → Network** sekmesine girin, sayfayı yenileyin. `documents` veya `api/documents` isteğine tıklayın: **Status** 200 mü, yoksa (CORS) kırmızı / failed mı? CORS hatası varsa yukarıdaki CORS_ORIGINS düzeltmesi gerekir.
+
+---
+
 ## Hâlâ Olmadıysa
 
 ### Doküman sayısı 0 ve chatbot cevap vermiyor
@@ -151,6 +215,44 @@ sudo systemctl restart subu-backend
 - **PDF'ler** `backend/data/raw_pdfs/` içinde olmalı; script henüz JSON'u olmayan her PDF'i JSON'a çevirip `data/processed_json/` içine yazar.
 - **JSON'lar** doğrudan `backend/data/processed_json/` içine kopyalanabilir; script bu klasördeki tüm `.json` dosyalarını okuyup vector store'u sıfırdan oluşturur.
 - Sadece vector store istiyorsanız (DB'ye kayıt istemiyorsanız): `python load_manual_documents.py --no-db`
+
+### Doküman sayısı hâlâ 0 – Debug
+
+**1) Güncel documents.py’yi atın** (path çözümlemesi + debug endpoint eklendi):
+```bash
+# Mac'te
+scp /Users/muhammedbehlulalar/Desktop/subu_chatbot_v2/backend/app/api/documents.py root@45.141.150.48:/opt/local_chatbot_subu/backend/app/api/
+```
+
+**2) Sunucuda backend’i yeniden başlatın:**
+```bash
+sudo systemctl restart subu-backend
+```
+
+**3) Debug endpoint’e bakın (sunucuda veya tarayıcıdan):**
+```bash
+curl http://localhost:8000/api/documents/debug
+```
+Çıktıda göreceksiniz:
+- `cwd` – Backend’in çalıştığı dizin
+- `json_candidates` – Bakılan JSON klasörleri, `exists` ve `json_count`
+- `json_dir_used` – Kullanılan klasör (burada dosya varsa sayı 0 olmaz)
+- `vector_store_count` – Vector store’daki kayıt sayısı
+- `db_count` – Veritabanındaki döküman sayısı
+
+**4) Eğer `json_file_count` 0 ise** JSON’lar yanlış yerde. Doğru yerler:
+- `/opt/local_chatbot_subu/backend/data/processed_json/`
+- veya sunucuda `cwd` ne ise `cwd/data/processed_json/` veya `cwd/backend/data/processed_json/`
+
+Örnek JSON’u oraya kopyalayıp **vector store’u oluşturun:**
+```bash
+cd /opt/local_chatbot_subu/backend
+source venv/bin/activate
+python load_manual_documents.py
+sudo systemctl restart subu-backend
+```
+
+**5) Eğer `json_file_count` > 0 ama arayüzde hâlâ 0 görünüyorsa** API sayıyı JSON’dan döndürüyor olmalı; frontend’in doğru API’yi çağırdığından ve cache temizlendiğinden emin olun (Ctrl+Shift+R).
 
 ### Doküman sayısı hâlâ 0 (genel kontrol)
 ```bash

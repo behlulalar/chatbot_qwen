@@ -2,7 +2,7 @@
 Tests for document chunking.
 """
 import pytest
-from langchain.schema import Document
+from langchain_core.documents import Document
 from app.rag.chunker import DocumentChunker
 
 

@@ -74,7 +74,7 @@ class LinkTracker:
                         stats["updated"] += 1
                     else:
                         # No changes
-                        existing_doc.last_checked_at = datetime.now()
+                        existing_doc.last_checked_at = datetime.now()  # type: ignore[assignment]
                         stats["unchanged"] += 1
                 else:
                     # New document
@@ -115,13 +115,13 @@ class LinkTracker:
         doc.pdf_hash = result['file_hash']
         doc.pdf_path = result['filepath']
         doc.file_size = result['file_size']
-        doc.status = DocumentStatus.DOWNLOADED
-        doc.last_checked_at = datetime.now()
-        doc.updated_at = datetime.now()
-        
+        doc.status = DocumentStatus.DOWNLOADED  # type: ignore[assignment]
+        doc.last_checked_at = datetime.now()  # type: ignore[assignment]
+        doc.updated_at = datetime.now()  # type: ignore[assignment]
+
         # Clear old processing data (will be reprocessed)
-        doc.json_path = None
-        doc.processed_at = None
+        doc.json_path = None  # type: ignore[assignment]
+        doc.processed_at = None  # type: ignore[assignment]
     
     def get_documents_to_process(self) -> List[Document]:
         """
@@ -148,10 +148,10 @@ class LinkTracker:
         """
         doc = self.db.query(Document).filter(Document.id == doc_id).first()
         if doc:
-            doc.status = DocumentStatus.PROCESSED
-            doc.json_path = json_path
-            doc.page_count = page_count
-            doc.processed_at = datetime.now()
+            doc.status = DocumentStatus.PROCESSED  # type: ignore[assignment]
+            doc.json_path = json_path  # type: ignore[assignment]
+            doc.page_count = page_count  # type: ignore[assignment]
+            doc.processed_at = datetime.now()  # type: ignore[assignment]
             self.db.commit()
             logger.info(f"Marked document {doc_id} as processed")
     
@@ -165,7 +165,7 @@ class LinkTracker:
         """
         doc = self.db.query(Document).filter(Document.id == doc_id).first()
         if doc:
-            doc.status = DocumentStatus.FAILED
-            doc.error_message = error_message
+            doc.status = DocumentStatus.FAILED  # type: ignore[assignment]
+            doc.error_message = error_message  # type: ignore[assignment]
             self.db.commit()
             logger.error(f"Marked document {doc_id} as failed: {error_message}")
