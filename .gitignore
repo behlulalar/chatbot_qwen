@@ -11,10 +11,19 @@ ENV/
 dist/
 build/
 
-# Environment
+# Environment (keep only .example files)
 .env
 .env.local
+.env.*
+!.env.example
 backend/.env.sunucu
+backend/.env.server
+backend/.env.*
+!backend/.env.example
+frontend/.env.development
+frontend/.env.production
+frontend/.env.*
+!frontend/.env.example
 
 # IDEs
 .vscode/
@@ -58,6 +67,10 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
 
 # Chrome
 chromedriver
