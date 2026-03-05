@@ -72,6 +72,11 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Docs – internal .md’ler GitHub’a gitmesin (sadece ana README kalsın)
+*.md
+!README.md
+!frontend/README.md
+
 # Chrome
 chromedriver
 chromedriver.exe
