@@ -114,11 +114,15 @@ const ChatInterface: React.FC = () => {
       saveSession(session);
       setSessionRefreshTrigger(prev => prev + 1);
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error:', error);
+      const isNetworkError = axios.isAxiosError(error) && (error.code === 'ERR_NETWORK' || !error.response);
+      const content = isNetworkError
+        ? 'Sunucuya bağlanılamıyor. İnternet bağlantınızı veya sunucu erişimini kontrol edin; bağlantı kurulunca tekrar deneyin.'
+        : 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.';
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+        content,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);

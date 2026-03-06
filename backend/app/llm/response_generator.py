@@ -180,6 +180,11 @@ class ResponseGenerator:
         generator = ResponseGenerator()
         response = generator.generate_response("Ödül nasıl alınır?")
     """
+
+    # Tek kelime / kısa test veya anlamsız sorgular (retrieval'a girmeden no_context dön)
+    _NONSENSE_OR_TEST_QUERIES = frozenset({
+        "deneme", "test", "asdf", "asdfg", "asdfgh", "try", "naber", "napim", "random",
+    })
     
     def __init__(
         self,
@@ -255,7 +260,19 @@ class ResponseGenerator:
         if meta_response:
             logger.info("Returning meta response (about chatbot)")
             return meta_response
-        
+
+        # Step 1.5: Reject nonsensical / too-short / test queries
+        cleaned = re.sub(r'[^\w]', '', question)
+        if len(cleaned) < 5:
+            logger.info(f"Query too short after cleaning ({len(cleaned)} chars), returning no-context")
+            return self._no_context_response(question)
+        # Tek kelime test/anlamsız sorgular (örn. "deneme" → sınav mevzuatı getirmesin)
+        q_normalized = normalize_turkish(question).strip()
+        q_words = set(q_normalized.split())
+        if len(q_words) <= 2 and q_normalized in self._NONSENSE_OR_TEST_QUERIES:
+            logger.info(f"Test/nonsense query detected: {question!r}, returning no-context")
+            return self._no_context_response(question)
+
         retrieval_query = self._build_retrieval_query(question, conversation_history)
 
         import time
@@ -334,6 +351,12 @@ class ResponseGenerator:
         "ALAKASIZ: 2\n"
         "CEVAP: [Sorunun kısa ve net cevabı, alakalı maddelere dayanarak]\n\n"
         "KURALLAR:\n"
+        "- Eğer bir madde sorunun konusuyla doğrudan veya dolaylı olarak ilgiliyse ALAKALI say. "
+        "Örneğin 'vefat' sorusunda 'üniversiteden ayrılma/kayıt silme' maddesi alakalıdır.\n"
+        "- Sadece soruyla hiç ilgisi olmayan maddeler ALAKASIZ olmalı\n"
+        "- Eğer soru anlamsız, tek kelimelik bir test (ör: 'deneme', 'test', 'asdf') veya "
+        "üniversite mevzuatıyla alakasız ise (ör: 'hava nasıl', 'iphone var mı') "
+        "tüm maddeleri ALAKASIZ say\n"
         "- Hiçbir madde alakalı değilse: ALAKALI: YOK yazıp CEVAP satırını yazma\n"
         "- Cevabı sadece verilen kaynaklara dayandır, bilgi uydurma\n"
         "- Cevap kısa olsun, detaylar zaten tam metin olarak eklenecek"
@@ -358,7 +381,7 @@ class ResponseGenerator:
             title = meta.get("title", "")[:60]
             article_num = meta.get("article_number", "?")
             article_title = meta.get("article_title", "")
-            preview = doc.page_content[:300].replace("\n", " ")
+            preview = doc.page_content[:500].replace("\n", " ")
             items.append(
                 f"{i}. [{title} - Madde {article_num} ({article_title})]\n{preview}"
             )
@@ -780,24 +803,35 @@ class ResponseGenerator:
             Response dict if meta question, None otherwise
         """
         question_lower = question.lower().strip()
-        
-        # Meta question keywords
-        meta_keywords = [
+        # Normalize for matching (evli miisin = evli misin)
+        q_norm = normalize_turkish(question).strip()
+
+        meta_phrases = [
             "sen kimsin", "kim sin", "kimsin", "sen nesin",
             "nasıl çalışırsın", "nasıl çalışıyorsun",
             "ne yaparsın", "ne yapıyorsun", "ne işe yararsın",
             "kim yaptı seni", "kim geliştirdi", "kim yarattı",
             "nasıl yapıldın", "hangi teknoloji",
             "kendin hakkında", "kendini tanıt",
-            "merhaba", "selam", "hello", "hi"
+            # Asistanı hedefleyen kişisel sorular (mevzuat değil, bana soruyor)
+            "evli misin", "sen evli", "evli miisin", "evli mi sin",
+            "cocugun var", "cocuklarin var", "cocuk var mi", "çocukların var",
+            "ise sahip misin", "işe sahip misin", "bi işe sahip",
+            "evlilik dusunur", "evlilik düşünür", "evlilik düsünür müsün",
         ]
-        
-        # Check if question contains meta keywords
-        is_meta = any(keyword in question_lower for keyword in meta_keywords)
+
+        _greeting_re = re.compile(
+            r'^(merhaba|selam|hello|hi|hey|helo)[\s!?.,:;]*$', re.IGNORECASE
+        )
+
+        is_meta = (
+            _greeting_re.match(question_lower) is not None
+            or any(phrase in question_lower for phrase in meta_phrases)
+            or any(phrase in q_norm for phrase in meta_phrases)
+        )
         
         if is_meta:
-            # Generate appropriate response based on question
-            if any(word in question_lower for word in ["merhaba", "selam", "hello", "hi"]):
+            if _greeting_re.match(question_lower):
                 answer = """Merhaba! 👋
 
 Ben **SUBU Mevzuat Asistanı**. Sakarya Uygulamalı Bilimler Üniversitesi'nin mevzuat, yönerge ve prosedürleri hakkında size yardımcı olmak için buradayım.

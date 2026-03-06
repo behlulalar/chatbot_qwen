@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     max_tokens: int = Field(default=1200, alias="MAX_TOKENS")
     
     # Embeddings
-    embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
+    embedding_model: str = Field(default="bge-m3", alias="EMBEDDING_MODEL")
     chunk_size: int = Field(default=800, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, alias="CHUNK_OVERLAP")
     

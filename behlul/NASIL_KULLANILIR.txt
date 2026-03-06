@@ -1,0 +1,19 @@
+Sunucuya yükleme (behlulalar@10.80.0.175, ~/behlul)
+================================================
+
+Giriş bilgisi:
+  ssh behlulalar@10.80.0.175
+  Sunucudaki klasör: ~/behlul
+
+Her değişiklik yaptıktan sonra (Mac’te proje klasöründen):
+
+  chmod +x behlul/sunucuya_yukle.sh
+  ./behlul/sunucuya_yukle.sh
+
+Bu komut tüm projeyi (node_modules, venv, .git, büyük data hariç)
+sunucudaki ~/behlul içine gönderir.
+
+İlk seferden sonra sadece:
+  ./behlul/sunucuya_yukle.sh
+
+yeterli.

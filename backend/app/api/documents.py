@@ -36,30 +36,29 @@ def _chroma_count_from_path(chroma_path: str) -> Optional[int]:
 
 def _get_document_count_fallback():
     """
-    Get document count when DB is empty: try vector store, then ChromaDB direct count, then JSON directory.
-    Uses resolved absolute paths so it works regardless of process cwd.
+    Get document count when DB is empty.
+    JSON file count represents actual documents; ChromaDB count is chunks (much higher).
     """
+    # 1) JSON dosya sayısı (gerçek doküman sayısı)
+    for base in [
+        resolve_json_directory(),
+        Path.home() / "behlul" / "backend" / "data" / "processed_json",
+        Path("/home/behlulalar/behlul/backend/data/processed_json"),
+    ]:
+        try:
+            if base.exists():
+                n = len(list(base.glob("*.json")))
+                if n > 0:
+                    return n
+        except Exception as e:
+            logger.debug(f"JSON dir count from {base!s} failed: {e}")
+
+    # 2) ChromaDB sayımı (son çare, chunk sayısı döner)
     chroma_dir = resolve_chroma_directory()
-    chroma_path = str(chroma_dir)
-
-    # 1) Vector store count via VectorStoreManager (needs OpenAI embedding init)
-    try:
-        from app.rag import VectorStoreManager
-        manager = VectorStoreManager(persist_directory=chroma_path)
-        manager.create_or_load()
-        stats = manager.get_collection_stats()
-        count = stats.get("document_count")
-        if count is not None and count > 0:
-            return count
-    except Exception as e:
-        logger.debug(f"Vector store count fallback failed: {e}")
-
-    # 2) ChromaDB doğrudan sayım (embedding gerekmez)
-    n = _chroma_count_from_path(chroma_path)
+    n = _chroma_count_from_path(str(chroma_dir))
     if n is not None and n > 0:
         return n
 
-    # 3) Sunucuda yaygın mutlak path (resolve yanlış dizin verirse)
     for extra in [
         Path.home() / "behlul" / "backend" / "data" / "chroma_db",
         Path("/home/behlulalar/behlul/backend/data/chroma_db"),
@@ -67,18 +66,8 @@ def _get_document_count_fallback():
         if extra.exists():
             n = _chroma_count_from_path(str(extra))
             if n is not None and n > 0:
-                logger.info(f"ChromaDB count from fallback path {extra!s}: {n}")
                 return n
 
-    # 4) JSON dosya sayısı
-    try:
-        base = resolve_json_directory()
-        if base.exists():
-            n = len(list(base.glob("*.json")))
-            if n > 0:
-                return n
-    except Exception as e:
-        logger.warning(f"JSON dir count fallback failed: {e}")
     return 0
 
 

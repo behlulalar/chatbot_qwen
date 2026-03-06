@@ -6,6 +6,12 @@ from pathlib import Path
 
 from pydantic import SecretStr
 from langchain_core.documents import Document
+
+try:
+    from langchain_ollama import OllamaEmbeddings
+except ImportError:
+    OllamaEmbeddings = None
+
 from langchain_openai import OpenAIEmbeddings
 
 try:
@@ -60,21 +66,29 @@ class VectorStoreManager:
     
     def initialize_embeddings(self, openai_api_key: Optional[str] = None):
         """
-        Initialize OpenAI embeddings.
-        
-        Args:
-            openai_api_key: OpenAI API key (defaults to settings)
-        """
-        api_key = openai_api_key or settings.openai_api_key
-        if not api_key:
-            raise ValueError("OpenAI API key required for embeddings")
+        Initialize embeddings — Ollama (local) or OpenAI (API) based on config.
 
-        self.embeddings = OpenAIEmbeddings(
-            model=settings.embedding_model,
-            api_key=SecretStr(api_key)
-        )
-        
-        logger.info(f"OpenAI embeddings initialized: {settings.embedding_model}")
+        Uses Ollama when LLM_BASE_URL is set (local deployment).
+        Falls back to OpenAI when no base_url is configured.
+        """
+        base_url = settings.llm_base_url
+
+        if base_url and OllamaEmbeddings is not None:
+            ollama_host = base_url.replace("/v1", "")
+            self.embeddings = OllamaEmbeddings(
+                model=settings.embedding_model,
+                base_url=ollama_host,
+            )
+            logger.info(f"Ollama embeddings initialized: {settings.embedding_model} @ {ollama_host}")
+        else:
+            api_key = openai_api_key or settings.openai_api_key
+            if not api_key:
+                raise ValueError("OpenAI API key required for embeddings")
+            self.embeddings = OpenAIEmbeddings(
+                model=settings.embedding_model,
+                api_key=SecretStr(api_key),
+            )
+            logger.info(f"OpenAI embeddings initialized: {settings.embedding_model}")
     
     def create_or_load(self) -> Chroma:
         """

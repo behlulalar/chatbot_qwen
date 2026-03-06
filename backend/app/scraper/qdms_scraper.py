@@ -12,7 +12,7 @@ import time
 import hashlib
 import requests
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 from selenium import webdriver
@@ -80,7 +80,7 @@ class QDMSScraper:
         logger.info("Chrome WebDriver initialized")
         return driver
     
-    def extract_qdms_links(self, url: str = None) -> List[Dict[str, str]]:
+    def extract_qdms_links(self, url: Optional[str] = None) -> List[Dict[str, str]]:
         """
         Extract all QDMS PDF links from the webpage.
         
@@ -152,7 +152,7 @@ class QDMSScraper:
                 driver.quit()
                 logger.info("WebDriver closed")
     
-    def download_pdf(self, url: str, title: str) -> Optional[Dict[str, any]]:
+    def download_pdf(self, url: str, title: str) -> Optional[Dict[str, Any]]:
         """
         Download PDF from URL and calculate its hash.
         
@@ -257,7 +257,7 @@ class QDMSScraper:
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
     
-    def scrape_and_download_all(self, sources: Optional[List[str]] = None) -> List[Dict[str, any]]:
+    def scrape_and_download_all(self, sources: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Complete workflow: Extract links from configured QDMS page(s) and download all PDFs.
         
