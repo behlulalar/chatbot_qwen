@@ -6,9 +6,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.config import settings
-from app.api import chat, documents
+from app.api import chat, documents, feedback, auth
 from app.api.documents import chroma_debug
 from app.schemas.chat import HealthResponse
 from app.database import engine, Base
@@ -39,6 +40,8 @@ app.add_middleware(
 # Include routers
 app.include_router(chat.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
+app.include_router(feedback.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 # ChromaDB teşhis (0 doküman sorunu) — hem /api/documents/chroma-debug hem bu yol
 app.add_api_route("/api/chroma-debug", chroma_debug, methods=["GET"], tags=["debug"])
@@ -88,10 +91,15 @@ async def api_health_check():
     return await health_check()
 
 
-# Tek port: frontend build varsa en sonda mount et (/health vb. önce eşlensin)
+# Tek port: frontend build varsa SPA olarak serve et (/admin, / vb. index.html döner)
 _frontend_build = Path(__file__).resolve().parent.parent.parent / "frontend" / "build"
 if _frontend_build.exists() and (_frontend_build / "index.html").exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_build), html=True), name="frontend")
+    app.mount("/static", StaticFiles(directory=str(_frontend_build / "static")), name="static")
+
+    @app.get("/{full_path:path}", tags=["frontend"])
+    async def serve_spa(full_path: str):
+        """SPA fallback: /admin, / vb. tüm yollarda index.html döner."""
+        return FileResponse(_frontend_build / "index.html")
 else:
     @app.get("/", tags=["root"])
     async def root():

@@ -254,6 +254,38 @@
   text-align: left;
 }
 
+/* Feedback actions */
+.feedback-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.feedback-btn {
+  background: transparent;
+  border: none;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.feedback-btn:hover {
+  color: #6B7280;
+}
+
+.feedback-btn.active {
+  color: #3B82F6;
+}
+
+.feedback-btn.active.negative {
+  color: #EF4444;
+}
+
 /* Sources Section - Only for Assistant */
 .sources-section {
   margin-top: 16px;

@@ -1,0 +1,131 @@
+/* Tam ekran tek renk arka plan - parent (body/App) beyaz kalsa bile login tüm ekranı kaplar */
+.login-page {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #202123;
+  z-index: 9999;
+}
+
+.login-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  padding: 40px 44px;
+  width: 100%;
+  max-width: 380px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  background: #202123;
+  color: #ECECF1;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-header h1 {
+  margin: 0 0 6px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.login-header p {
+  margin: 0;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-error {
+  padding: 10px 12px;
+  background: #FEE2E2;
+  color: #991B1B;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.login-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.login-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #FFFFFF;
+}
+
+.login-field input:focus {
+  outline: none;
+  border-color: #9CA3AF;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.login-submit {
+  padding: 12px 20px;
+  background: #202123;
+  color: #ECECF1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #2d2e32;
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobil */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px;
+    min-height: 340px;
+    max-width: 100%;
+  }
+
+  .login-header h1 {
+    font-size: 18px;
+  }
+}

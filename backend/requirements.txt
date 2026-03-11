@@ -34,6 +34,10 @@ numpy<2.0.0,>=1.22.0
 # Scheduler
 apscheduler>=3.10.0
 
+# Auth
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+
 # Utils
 python-dotenv>=1.0.0
 pydantic>=2.5.0

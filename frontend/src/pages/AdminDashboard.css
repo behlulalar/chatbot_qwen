@@ -1,0 +1,107 @@
+/* Tam genişlik: tüm alan kullanılır */
+.admin-dashboard {
+  padding: 28px 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-dashboard-header {
+  margin-bottom: 28px;
+}
+
+.admin-dashboard-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.admin-dashboard-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+.admin-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.admin-card:hover:not(.disabled) {
+  border-color: #9CA3AF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.admin-card.disabled {
+  opacity: 0.75;
+  cursor: default;
+  background: #F9FAFB;
+}
+
+.admin-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.admin-card-icon.feedback {
+  background: #F3F4F6;
+  color: #374151;
+}
+
+.admin-card:hover:not(.disabled) .admin-card-icon.feedback {
+  background: #202123;
+  color: #ECECF1;
+}
+
+.admin-card-icon.doc {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.admin-card h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.admin-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* Mobil */
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 20px 16px;
+  }
+
+  .admin-dashboard-header h1 {
+    font-size: 20px;
+  }
+
+  .admin-dashboard-cards {
+    grid-template-columns: 1fr;
+  }
+}

@@ -323,6 +323,21 @@
   background: transparent;
 }
 
+a.feedback-button {
+  text-decoration: none;
+}
+
+.feedback-button {
+  color: #3B82F6;
+  border-color: rgba(59, 130, 246, 0.3);
+  margin-bottom: 8px;
+}
+
+.feedback-button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
 .clear-button {
   color: #EF4444;
   border-color: rgba(239, 68, 68, 0.3);

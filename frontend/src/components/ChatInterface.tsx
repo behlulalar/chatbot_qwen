@@ -131,6 +131,26 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+    const handleFeedback = async (
+    question: string,
+    answer: string,
+    rating: 'positive' | 'negative',
+    reason?: string,
+    comment?: string
+  ) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/feedback/`, {
+        question,
+        answer,
+        rating,
+        reason: reason || null,
+        comment: comment || null,
+      });
+    } catch (err) {
+      console.error('Geri bildirim gönderilemedi:', err);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -204,6 +224,7 @@ const ChatInterface: React.FC = () => {
         </div>
 
         {/* Messages */}
+        <>
         <div className="messages-container">
           {messages.length === 0 ? (
             <div className="welcome-screen">
@@ -230,7 +251,12 @@ const ChatInterface: React.FC = () => {
           ) : (
             <>
               {messages.map((message, index) => (
-                <ChatMessage key={index} message={message} />
+                <ChatMessage
+                  key={index}
+                  message={message}
+                  question={message.role === 'assistant' ? messages[index - 1]?.content : undefined}
+                  onFeedback={message.role === 'assistant' ? handleFeedback : undefined}
+                />
               ))}
               {isLoading && (
                 <div className="loading-indicator">
@@ -270,6 +296,7 @@ const ChatInterface: React.FC = () => {
             <small>Enter ile gönder • Shift+Enter ile yeni satır</small>
           </div>
         </div>
+        </>
       </div>
     </div>
   );

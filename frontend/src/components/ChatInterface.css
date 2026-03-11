@@ -111,6 +111,15 @@
   letter-spacing: 0.01em;
 }
 
+/* Feedback Panel Wrapper */
+.feedback-panel-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Messages - Clean White Background */
 .messages-container {
   flex: 1;

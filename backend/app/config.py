@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     query_cache_ttl: int = Field(default=3600, alias="QUERY_CACHE_TTL")
     response_cache_ttl: int = Field(default=1800, alias="RESPONSE_CACHE_TTL")
     
+    # Admin Auth (env: ADMIN_SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD)
+    admin_secret_key: str = Field(default="change-me-in-production", alias="ADMIN_SECRET_KEY")
+    admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
+    admin_password: str = Field(default="admin123", alias="ADMIN_PASSWORD")
+
     # CORS Settings
     cors_origins: str = Field(
         default="http://localhost:3000,http://localhost:80",

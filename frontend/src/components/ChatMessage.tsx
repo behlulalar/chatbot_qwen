@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, MessageCircle, BookOpen, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import { User, MessageCircle, BookOpen, ChevronDown, ChevronUp, BarChart3, ThumbsUp, ThumbsDown } from 'lucide-react';
+import FeedbackModal from './FeedbackModal';
 import './ChatMessage.css';
 
 interface Source {
@@ -30,11 +31,15 @@ interface Message {
 
 interface ChatMessageProps {
   message: Message;
+  question?: string;
+  onFeedback?: (question: string, answer: string, rating: 'positive' | 'negative', reason?: string, comment?: string) => void;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, question = '', onFeedback }) => {
   const [showSources, setShowSources] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('tr-TR', { 
@@ -107,6 +112,50 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             )}
           </div>
         )}
+
+        {/* Feedback buttons */}
+        {onFeedback && question && (
+          <div className="feedback-actions">
+            <button
+              type="button"
+              className={`feedback-btn ${feedbackGiven === 'positive' ? 'active' : ''}`}
+              onClick={() => {
+                if (feedbackGiven) return;
+                onFeedback(question, message.content, 'positive');
+                setFeedbackGiven('positive');
+              }}
+              aria-label="İyi cevap"
+              title="İyi cevap"
+            >
+              <ThumbsUp size={16} />
+            </button>
+            <button
+              type="button"
+              className={`feedback-btn negative ${feedbackGiven === 'negative' ? 'active' : ''}`}
+              onClick={() => {
+                if (feedbackGiven) return;
+                setShowFeedbackModal(true);
+              }}
+              aria-label="Kötü cevap"
+              title="Kötü cevap"
+            >
+              <ThumbsDown size={16} />
+            </button>
+          </div>
+        )}
+
+        <FeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+          onSubmit={(rating, reason, comment) => {
+            if (rating === 'negative') {
+              onFeedback?.(question, message.content, 'negative', reason, comment);
+              setFeedbackGiven('negative');
+            }
+            setShowFeedbackModal(false);
+          }}
+          isNegative={true}
+        />
 
         {/* Metadata */}
         {message.metadata && (
