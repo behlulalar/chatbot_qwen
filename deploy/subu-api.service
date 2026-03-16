@@ -1,0 +1,30 @@
+# SUBU Mevzuat Chatbot API — systemd servisi (12 Mart Roadmap)
+# Kullanım: Bu dosyayı /etc/systemd/system/subu-api.service olarak kopyalayın.
+# BACKEND_ROOT ve User/Group değerlerini sunucuya göre düzenleyin.
+#
+#   sudo cp deploy/subu-api.service /etc/systemd/system/subu-api.service
+#   sudo nano /etc/systemd/system/subu-api.service
+#   sudo systemctl daemon-reload && sudo systemctl enable subu-api && sudo systemctl start subu-api
+
+[Unit]
+Description=SUBU Mevzuat Chatbot API (Gunicorn + Uvicorn)
+After=network.target postgresql.service
+# Redis kullanıyorsanız: After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+Group=YOUR_USERNAME
+WorkingDirectory=BACKEND_ROOT
+Environment="PATH=BACKEND_ROOT/venv/bin"
+ExecStart=BACKEND_ROOT/venv/bin/gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --access-logfile BACKEND_ROOT/logs/access.log \
+    --error-logfile BACKEND_ROOT/logs/error.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

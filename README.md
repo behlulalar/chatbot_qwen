@@ -232,6 +232,20 @@ Ham metin
 | `backend/CACHE_TEMIZLEME.md` | Onbellek temizleme talimatlari |
 | `backend/PERFORMANS_YONETIMI.md` | Performans ayarlama kilavuzu |
 
+### 14. Production: Gunicorn + systemd (12 Mart Roadmap)
+
+**Hedef:** 150–200 kullanici kapasitesi icin API katmaninda Gunicorn ile 4 worker, systemd ile otomatik baslatma.
+
+| Degisiklik | Detay |
+|------------|--------|
+| `backend/requirements.txt` | **gunicorn** eklendi (uvicorn ile birlikte production WSGI/ASGI sunucusu) |
+| `deploy/README.md` | **Yeni** — Gunicorn kurulumu, 4 worker komutu, systemd adimlari, Gunicorn vs Uvicorn dogrulama |
+| `deploy/subu-api.service` | **Yeni** — systemd unit sablonu; sunucuda `/etc/systemd/system/subu-api.service` olarak kopyalanir |
+| `DEPLOYMENT_UBUNTU.md` | Systemd bolumu **subu-api.service** ve `deploy/` referansi ile guncellendi |
+
+- Calistirma: `gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000` (backend dizininden)
+- Servis: `systemctl enable subu-api && systemctl start subu-api`
+
 ---
 
 ## Duzeltilen Kritik Bug'lar
@@ -270,6 +284,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env dosyasini duzenle
 python run_server.py
+# Production: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
 ### Frontend
@@ -292,6 +307,8 @@ python rebuild_embeddings.py     # ChromaDB olustur
 ## Sunucu Deployment
 
 Detayli talimatlar: [DEPLOYMENT_UBUNTU.md](DEPLOYMENT_UBUNTU.md)
+
+**Production (12 Mart Roadmap):** API, Gunicorn (4 worker) + Uvicorn worker ile calistirilir; systemd servisi `subu-api.service` olarak tanimlidir. Kurulum ve komutlar: [deploy/README.md](deploy/README.md). Repoda `deploy/subu-api.service` sablonu sunucuda `/etc/systemd/system/subu-api.service` olarak kopyalanip yapilandirilir.
 
 ```bash
 # Dosyalari sunucuya gonder
