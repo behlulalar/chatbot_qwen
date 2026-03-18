@@ -352,4 +352,4 @@ pytest -v
 **Muhammed Behlul Alar**
 - Proje: SUBU Mevzuat Chatbot v2
 - Kurum: Sakarya Uygulamali Bilimler Universitesi
-- Tarih: 2024-2026
+- Tarih: 2025-2026
