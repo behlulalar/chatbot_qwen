@@ -15,6 +15,11 @@ except ImportError:
 from langchain_openai import OpenAIEmbeddings
 
 try:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+except ImportError:
+    HuggingFaceEmbeddings = None
+
+try:
     from langchain_chroma import Chroma
 except ImportError:
     from langchain_community.vectorstores import Chroma
@@ -66,14 +71,24 @@ class VectorStoreManager:
     
     def initialize_embeddings(self, openai_api_key: Optional[str] = None):
         """
-        Initialize embeddings — Ollama (local) or OpenAI (API) based on config.
+        Initialize embeddings — CPU (HuggingFace), Ollama (GPU), or OpenAI (API) based on config.
 
-        Uses Ollama when LLM_BASE_URL is set (local deployment).
-        Falls back to OpenAI when no base_url is configured.
+        - EMBEDDING_DEVICE=cpu → HuggingFaceEmbeddings on CPU (GPU VRAM kullanmaz)
+        - EMBEDDING_DEVICE=auto + LLM_BASE_URL set → Ollama embeddings (GPU)
+        - EMBEDDING_DEVICE=auto + no base_url → OpenAI embeddings (API)
         """
         base_url = settings.llm_base_url
+        device = getattr(settings, "embedding_device", "auto") or "auto"
 
-        if base_url and OllamaEmbeddings is not None:
+        if device.lower() == "cpu" and HuggingFaceEmbeddings is not None:
+            # bge-m3 -> HuggingFace model id; diğer modeller için aynı isim denebilir
+            hf_model = "BAAI/bge-m3" if settings.embedding_model.lower() == "bge-m3" else settings.embedding_model
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name=hf_model,
+                model_kwargs={"device": "cpu"},
+            )
+            logger.info(f"HuggingFace embeddings (CPU): {hf_model}")
+        elif base_url and OllamaEmbeddings is not None:
             ollama_host = base_url.replace("/v1", "")
             self.embeddings = OllamaEmbeddings(
                 model=settings.embedding_model,

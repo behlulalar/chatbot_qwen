@@ -4,6 +4,7 @@ import { BookOpen, Send, Menu, Hand, Trophy, Clock, Beaker, Hourglass } from 'lu
 import ChatMessage from './ChatMessage';
 import Sidebar from './Sidebar';
 import './ChatInterface.css';
+import DisclaimerModal from './DisclaimerModal';
 import {
   ChatSession,
   saveSession,
@@ -47,6 +48,7 @@ const ChatInterface: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessionRefreshTrigger, setSessionRefreshTrigger] = useState(0);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -217,7 +219,10 @@ const ChatInterface: React.FC = () => {
               <Menu size={24} />
             </button>
             <div className="header-title">
-              <h1><BookOpen size={24} /> SUBU Mevzuat Asistanı</h1>
+              <h1>
+                <img className="subu-header-logo" src={`${process.env.PUBLIC_URL}/subu-logo.png`} alt="SUBÜ Logo" />
+                SUBU Mevzuat Asistanı
+              </h1>
               <p>Sakarya Uygulamalı Bilimler Üniversitesi</p>
             </div>
           </div>
@@ -294,8 +299,19 @@ const ChatInterface: React.FC = () => {
           </div>
           <div className="input-hint">
             <small>Enter ile gönder • Shift+Enter ile yeni satır</small>
+            <small className="ai-disclaimer">
+              SUBU Mevzuat Asistanı bir yapay zekadır hata yapabilir.{' '}
+              <button
+                type="button"
+                className="ai-disclaimer-link"
+                onClick={() => setIsDisclaimerOpen(true)}
+              >
+                Detaylar
+              </button>
+            </small>
           </div>
         </div>
+        <DisclaimerModal isOpen={isDisclaimerOpen} onClose={() => setIsDisclaimerOpen(false)} />
         </>
       </div>
     </div>

@@ -7,8 +7,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.limiter import limiter
 from app.api import chat, documents, feedback, auth
 from app.api.documents import chroma_debug
 from app.schemas.chat import HealthResponse
@@ -27,8 +30,11 @@ app = FastAPI(
     description="Mevzuat chatbot API - RAG-based Q&A system for university regulations"
 )
 
+# Rate limiting (slowapi): 429 döner, limit aşılırsa
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS middleware (for frontend)
-# Development: localhost:3000, Production: add your domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),

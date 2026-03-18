@@ -37,6 +37,7 @@ class ChatMetadata(BaseModel):
     response_time: float
     model: str
     no_context: Optional[bool] = False
+    cached: Optional[bool] = Field(default=False, description="True if response was served from cache (Redis/LRU)")
 
 
 class ChatResponse(BaseModel):

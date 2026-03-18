@@ -6,10 +6,11 @@ from queue import Queue
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 import json
 
+from app.limiter import limiter
 from app.schemas.chat import ChatRequest, ChatResponse, Source, ChatMetadata
 from app.llm import ResponseGenerator
 from app.utils.logger import setup_logger
@@ -34,31 +35,23 @@ def get_generator():
 
 
 @router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+@limiter.limit("15/minute")
+async def chat(request: Request, chat_request: ChatRequest):
     """
     Chat endpoint - Ask questions about university regulations.
-    
-    Args:
-        request: ChatRequest with question and optional conversation history
-    
-    Returns:
-        ChatResponse with answer, sources, and metadata
+    Rate limit: 15 istek/dakika per IP (slowapi).
     """
     try:
-        logger.info(f"Received chat request: '{request.question[:50]}...'")
+        logger.info(f"Received chat request: '{chat_request.question[:50]}...'")
         
-        # Get generator
         gen = get_generator()
-        
-        # Run heavy sync work in thread pool - prevents blocking event loop (UI freeze)
         response = await asyncio.to_thread(
             gen.generate_response,
-            question=request.question,
-            conversation_history=request.conversation_history,
-            include_sources=request.include_sources
+            question=chat_request.question,
+            conversation_history=chat_request.conversation_history,
+            include_sources=chat_request.include_sources
         )
         
-        # Convert to response model
         chat_response = ChatResponse(
             answer=response["answer"],
             sources=[Source(**src) for src in response["sources"]],
@@ -66,7 +59,6 @@ async def chat(request: ChatRequest):
         )
         
         logger.info(f"Response generated successfully: {response['metadata']['tokens']} tokens")
-        
         return chat_response
     
     except Exception as e:
@@ -75,25 +67,20 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest):
+@limiter.limit("15/minute")
+async def chat_stream(request: Request, chat_request: ChatRequest):
     """
-    Streaming chat endpoint.
-    
-    Args:
-        request: ChatRequest with question
-    
-    Returns:
-        Streaming response with chunks
+    Streaming chat endpoint. Rate limit: 15/dakika per IP.
     """
     try:
-        logger.info(f"Received streaming chat request: '{request.question[:50]}...'")
+        logger.info(f"Received streaming chat request: '{chat_request.question[:50]}...'")
         
         gen = get_generator()
         chunk_queue: Queue = Queue()
 
         def _produce_chunks():
             try:
-                for chunk in gen.generate_response_stream(request.question):
+                for chunk in gen.generate_response_stream(chat_request.question):
                     chunk_queue.put(("chunk", chunk))
                 chunk_queue.put(("done", None))
             except Exception as e:

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { MessagesSquare, PlusCircle, FileText, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react';
+import { MessagesSquare, PlusCircle, Trash2, X } from 'lucide-react';
 import './Sidebar.css';
 import { getSessions, deleteSession, ChatSession } from '../utils/sessionStorage';
 
@@ -16,14 +15,6 @@ interface SidebarProps {
   sessionRefreshTrigger?: number;
 }
 
-interface DocumentInfo {
-  id: number;
-  title: string;
-  status: string;
-  page_count?: number;
-  article_count?: number;
-}
-
 const Sidebar: React.FC<SidebarProps> = ({ 
   isOpen, 
   onToggle,
@@ -33,32 +24,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentSessionId,
   sessionRefreshTrigger = 0
 }) => {
-  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
-  const [totalDocuments, setTotalDocuments] = useState<number>(0);
-  const [showDocuments, setShowDocuments] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchDocuments();
-    }
     loadSessions();
   }, [isOpen, refreshKey, sessionRefreshTrigger]);
 
   const loadSessions = () => {
     const allSessions = getSessions();
     setSessions(allSessions);
-  };
-
-  const fetchDocuments = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/documents/?limit=10`);
-      setDocuments(response.data.documents);
-      setTotalDocuments(response.data.total);
-    } catch (error) {
-      console.error('Failed to fetch documents:', error);
-    }
   };
 
   if (!isOpen) return null;
@@ -132,57 +107,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Documents */}
-      <div className="sidebar-section">
-        <div className="section-header">
-          <h3>Mevzuatlar</h3>
-          <button 
-            className="expand-button"
-            onClick={() => setShowDocuments(!showDocuments)}
-          >
-            {showDocuments ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-        </div>
-        <div className="document-count">
-          {totalDocuments} doküman yüklü
-        </div>
-        
-        {showDocuments && (
-          <div className="documents-list">
-            {documents.length === 0 && totalDocuments > 0 ? (
-              <p className="empty-message">Mevzuat veritabanı yüklü (kaynak parçaları)</p>
-            ) : (
-              documents.slice(0, 5).map((doc) => (
-                <div key={doc.id} className="document-item">
-                  <div className="document-title" title={doc.title}>
-                    <FileText size={16} /> {doc.title.substring(0, 40)}...
-                  </div>
-                  <div className="document-meta">
-                    {doc.page_count && <span>{doc.page_count} sayfa</span>}
-                    {doc.article_count && <span> • {doc.article_count} madde</span>}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="sidebar-section">
-        <button className="action-button clear-button" onClick={onClearChat}>
-          🗑️ Sohbeti Temizle
-        </button>
-      </div>
-
       {/* Footer */}
       <div className="sidebar-footer">
         <div className="version-info">
           <small>SUBU Chatbot v2.0</small>
-          <small>Powered by OpenAI GPT</small>
-          <small className="creator-info">
-            Created by <a href="https://www.linkedin.com/in/behlulalar/" target="_blank" rel="noopener noreferrer">BehlulAlar</a>
-          </small>
+          <small className="creator-info">Created by SUBU BİDB</small>
         </div>
       </div>
     </div>

@@ -39,6 +39,38 @@
   color: inherit;
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.admin-card-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  background: #E5E7EB;
+  border: 1px solid #D1D5DB;
+}
+
+.admin-card-counter {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.admin-card-counter::after {
+  content: " adet";
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-left: 6px;
 }
 
 .admin-card:hover:not(.disabled) {

@@ -5,6 +5,7 @@ import LoginPage from './LoginPage';
 import AdminLayout from './AdminLayout';
 import AdminDashboard from './AdminDashboard';
 import AdminFeedback from './AdminFeedback';
+import AdminDocuments from './AdminDocuments';
 
 const AdminPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -18,6 +19,7 @@ const AdminPage: React.FC = () => {
       <Route element={<AdminLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="feedback" element={<AdminFeedback />} />
+        <Route path="documents" element={<AdminDocuments />} />
         <Route path="dashboard" element={<AdminDashboard />} />
       </Route>
     </Routes>

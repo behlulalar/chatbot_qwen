@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = Field(default="SUBU Mevzuat Chatbot", alias="APP_NAME")
     app_version: str = Field(default="1.0.0", alias="APP_VERSION")
-    debug: bool = Field(default=True, alias="DEBUG")
+    debug: bool = Field(default=False, alias="DEBUG")  # Production'da mutlaka False
     port: int = Field(default=8000, alias="PORT")
     
     # Database
@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     
     # Embeddings
     embedding_model: str = Field(default="bge-m3", alias="EMBEDDING_MODEL")
+    embedding_device: str = Field(default="auto", alias="EMBEDDING_DEVICE")  # "cpu" | "cuda" | "auto" — cpu = HuggingFace CPU, auto = Ollama/OpenAI
     chunk_size: int = Field(default=800, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, alias="CHUNK_OVERLAP")
     
@@ -58,15 +59,15 @@ class Settings(BaseSettings):
     admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
     admin_password: str = Field(default="admin123", alias="ADMIN_PASSWORD")
 
-    # CORS Settings
+    # CORS Settings (Production: sadece frontend URL/IP listesi, virgülle ayrılmış)
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:80",
+        default="http://localhost:3000",
         alias="CORS_ORIGINS"
     )
     
     def get_cors_origins(self) -> list:
-        """Parse CORS origins from comma-separated string."""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        """Parse CORS origins from comma-separated string. Boş elemanları atlar."""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
     
     class Config:
         env_file = ".env"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { MessageCircle, LogOut, LayoutDashboard, Menu, X } from 'lucide-react';
+import { MessageCircle, LogOut, LayoutDashboard, Menu, X, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './AdminLayout.css';
 
@@ -37,6 +37,12 @@ const AdminLayout: React.FC = () => {
             className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`}
           >
             <MessageCircle size={18} /> Geri Bildirimler
+          </NavLink>
+          <NavLink
+            to="/admin/documents"
+            className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`}
+          >
+            <FileText size={18} /> Aktif Dokümanlar
           </NavLink>
         </nav>
         <div className="admin-sidebar-footer">

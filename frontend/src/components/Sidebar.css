@@ -253,6 +253,14 @@
   padding-left: 10px;
 }
 
+.footer-document-count {
+  margin: 0;
+  padding: 0;
+  font-size: 10px;
+  color: #8E8EA0;
+  opacity: 0.9;
+}
+
 .documents-list {
   display: flex;
   flex-direction: column;
